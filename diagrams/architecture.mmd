@@ -1,0 +1,79 @@
+flowchart LR
+    subgraph SRC["Azure SQL Database (read-only for this pipeline)"]
+        T[(Tables)]
+        V[/Views with structured headers/]
+        SP[/Stored Procedures with structured headers/]
+        MT[(meta.* tables<br/>canonical store in source DB)]
+        MV[[vw_BusinessMetadata]]
+        T --> V
+        V --> SP
+        V -. definitions read by .-> EXTRACT
+        SP -. definitions read by .-> EXTRACT
+        MT --> MV
+    end
+
+    subgraph EXT["Metadata Extraction & Enrichment"]
+        EXTRACT["T-SQL Extractor<br/>(02_extract_from_modules)"]
+        AOAI["Azure OpenAI<br/>(gap-fill drafts, IsDraft=1)"]
+        STEWARD["Steward Review<br/>(Power App / Notebook)"]
+        EXTRACT --> AOAI --> STEWARD
+        EXTRACT -->|MERGE upsert| MT
+        STEWARD -->|approve → IsDraft=0| MT
+    end
+
+    subgraph HUB["OneLake Metadata Lakehouse — lh_metadata (NEW HUB)"]
+        REPL[["Spark MERGE<br/>03_replicate_meta_to_onelake"]]
+        DA[(asset_metadata Delta)]
+        DC[(column_metadata Delta)]
+        DK[(kpi_metadata Delta)]
+        DV[[vw_business_metadata_current<br/>SQL endpoint view]]
+        REPL --> DA
+        REPL --> DC
+        REPL --> DK
+        DA --> DV
+        DC --> DV
+        DK --> DV
+    end
+
+    MV --> REPL
+
+    subgraph FAB["Microsoft Fabric — Data plane"]
+        MIRROR[["Fabric Mirroring<br/>(Azure SQL → OneLake)"]]
+        OL[(OneLake / Delta tables)]
+        LH["Lakehouse<br/>(Bronze/Silver/Gold)"]
+        WH["Warehouse"]
+        SM["Direct Lake<br/>Semantic Model"]
+        RPT["Power BI Reports +<br/>Copilot for Power BI"]
+        AGENT["Fabric Data Agents<br/>(grounded on lh_metadata)"]
+        ML["ML / Notebooks"]
+        MIRROR --> OL --> LH --> SM --> RPT
+        OL --> WH --> SM
+        SM --> AGENT
+        OL --> ML
+        DV -. grounding context .-> AGENT
+    end
+
+    T --> MIRROR
+
+    APPLY["Metadata Applier<br/>(05_apply_metadata_to_fabric)"]
+    DV --> APPLY
+    APPLY -->|Delta column COMMENTs| OL
+    APPLY -->|sp_addextendedproperty<br/>on WAREHOUSE only| WH
+    APPLY -->|TOM/TMSL via XMLA| SM
+
+    subgraph PUR["Microsoft Purview Unified Catalog"]
+        SCAN[["Fabric tenant + Azure SQL scan"]]
+        ATLAS["Atlas REST<br/>(pyapacheatlas)"]
+        GLOS["Business Glossary<br/>+ Sensitivity Labels"]
+        LIN["Lineage<br/>(SQL view/proc → Mirror → LH → SM)"]
+        SCAN --> LIN
+    end
+
+    SRC --> SCAN
+    FAB --> SCAN
+    DV --> ATLAS --> PUR
+    APPLY -.custom Process lineage edges.-> LIN
+
+    classDef removed fill:#fee,stroke:#c33,stroke-dasharray:5 5,color:#900
+    EP_REMOVED[/"sys.extended_properties<br/>(NOT used — see README §3)"/]:::removed
+    EP_REMOVED -.- SRC
