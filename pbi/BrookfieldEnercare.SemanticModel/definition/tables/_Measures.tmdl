@@ -1,5 +1,5 @@
 table _Measures
-	hidden
+	isHidden: true
 
 	measure 'Total MRR' = CALCULATE(
 			SUM(fct_billing[Amount]),
