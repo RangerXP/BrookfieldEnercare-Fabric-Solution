@@ -271,7 +271,7 @@ SELECT
         WHEN sr.status = 'Completed' AND sr.priority IN ('High','Emergency')
              AND sr.completed_date > sr.scheduled_date            THEN 1
         WHEN sr.status IN ('Open','InProgress') AND sr.priority IN ('High','Emergency')
-             AND sr.scheduled_date < CURRENT_DATE()               THEN 1
+             AND (sr.scheduled_date IS NULL OR sr.scheduled_date < CURRENT_DATE()) THEN 1
         ELSE 0
     END                                                            AS IsSlaBreachFlag,
     CASE WHEN sr.completed_date IS NOT NULL
