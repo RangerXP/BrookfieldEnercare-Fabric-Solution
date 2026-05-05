@@ -1,11 +1,11 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
   "metadata": {
-    "type": "SemanticModel",
-    "displayName": "BrookfieldEnercare"
+    "type": "Notebook",
+    "displayName": "nb_03_pbi_star_schema"
   },
   "config": {
     "version": "2.0",
-    "logicalId": "d19d7f14-ae22-9fde-462b-dafb983dfb0a"
+    "logicalId": "2855a8c8-73e1-890f-4e87-54260eaa3e30"
   }
 }

@@ -1,17 +1,24 @@
 model Model
-    culture: en-CA
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-US
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
 
-    /// UPDATE: replace both GUIDs below with your actual Fabric workspace and lakehouse IDs
-    /// Workspace ID : 795ce5db-7ea0-4a7c-ba64-e27c9fb568f4  (Enercare workspace)
-    /// Lakehouse ID : 0ee837e4-2fd3-40d9-b228-1f167b504b7d  (lh_enercare_demo)
-    datasource 'EnercareDemo' = expression
-        kind: Mashup
-        Value = """
-            let
-                Source = Lakehouse.Contents(
-                    [lakeHouseId = "0ee837e4-2fd3-40d9-b228-1f167b504b7d"],
-                    [workspaceId = "795ce5db-7ea0-4a7c-ba64-e27c9fb568f4"]
-                )
-            in
-                Source
-        """
+annotation PBI_QueryOrder = ["DirectLake - lh_enercare_demo"]
+
+annotation __PBI_TimeIntelligenceEnabled = 1
+
+annotation PBI_ProTooling = ["DirectLakeOnOneLakeInWeb"]
+
+ref table _Measures
+ref table dim_date
+ref table dim_equipment
+ref table dim_customer
+ref table dim_service_account
+ref table dim_product
+ref table fct_service_request
+ref table fct_billing
+ref table fct_contract_month
+
