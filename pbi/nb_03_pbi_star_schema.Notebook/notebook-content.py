@@ -284,6 +284,24 @@ print(f"  fct_service_request: {spark.table(f'{DEMO_LAKEHOUSE}.fct_service_reque
 
 # CELL ********************
 
+spark.sql("""
+SELECT 
+    SUM(IsSlaBreachFlag) AS TotalBreaches,
+    COUNT(*) AS TotalRows,
+    COUNT(CASE WHEN Priority IN ('High','Emergency') THEN 1 END) AS HighEmergencyRows,
+    COUNT(CASE WHEN Status IN ('Open','InProgress') AND Priority IN ('High','Emergency') THEN 1 END) AS OpenHighEmergency
+FROM lh_enercare_demo.fct_service_request
+""").show()
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# CELL ********************
+
 spark.sql(f"""
 CREATE OR REPLACE TABLE {DEMO_LAKEHOUSE}.fct_contract_month USING DELTA AS
 WITH months AS (
