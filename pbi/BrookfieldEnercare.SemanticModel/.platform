@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "SemanticModel",
+    "displayName": "BrookfieldEnercare"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "c7d8e9f0-a1b2-4c3d-8e5f-6a7b8c9d0e1f"
+  }
+}
