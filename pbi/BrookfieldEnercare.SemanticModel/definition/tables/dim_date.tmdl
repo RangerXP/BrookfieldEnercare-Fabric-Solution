@@ -1,0 +1,65 @@
+table dim_date
+    column DateKey
+        dataType: int64
+        isKey: true
+        sourceColumn: DateKey
+
+    column FullDate
+        dataType: dateTime
+        sourceColumn: FullDate
+        formatString: yyyy-MM-dd
+
+    column Year
+        dataType: int64
+        sourceColumn: Year
+
+    column Quarter
+        dataType: int64
+        sourceColumn: Quarter
+
+    column Month
+        dataType: int64
+        sourceColumn: Month
+
+    column MonthName
+        dataType: string
+        sourceColumn: MonthName
+
+    column Day
+        dataType: int64
+        sourceColumn: Day
+
+    column WeekOfYear
+        dataType: int64
+        sourceColumn: WeekOfYear
+
+    column DayOfWeek
+        dataType: int64
+        sourceColumn: DayOfWeek
+
+    column DayName
+        dataType: string
+        sourceColumn: DayName
+
+    column IsWeekend
+        dataType: int64
+        sourceColumn: IsWeekend
+
+    column IsLeapYear
+        dataType: int64
+        sourceColumn: IsLeapYear
+
+    column FiscalYear
+        dataType: int64
+        sourceColumn: FiscalYear
+
+    column FiscalQuarter
+        dataType: int64
+        sourceColumn: FiscalQuarter
+
+    partition dim_date = entityPartition
+        mode: directLake
+        source
+            entityName: dim_date
+            schemaName: dbo
+            expressionSource: EnercareDemo

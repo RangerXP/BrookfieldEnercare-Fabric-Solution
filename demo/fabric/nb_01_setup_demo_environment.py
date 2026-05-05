@@ -305,4 +305,244 @@ for tbl in ["customers", "service_accounts", "products", "equipment_registry"]:
     n = spark.table(f"{DEMO_LAKEHOUSE}.{tbl}").count()
     print(f"  {tbl:<25} {n:>5} rows")
 
-print("\nSetup complete.  Run nb_02_metadata_pipeline_demo.py next.")
+print("\nBase tables ready.  Running contracts, service_requests, billing_transactions...\n")
+
+
+# ---------------------------------------------------------------------------
+# CELL 7 — Contracts (56 rows)
+# ---------------------------------------------------------------------------
+from pyspark.sql.types import *
+from datetime import date
+
+product_code_map = {row[1]: row[0] for row in products_data}
+
+contracts_schema = StructType([
+    StructField("contract_id",         IntegerType(), False),
+    StructField("service_account_id",  IntegerType(), False),
+    StructField("product_id",          IntegerType(), False),
+    StructField("contract_status",     StringType(),  False),
+    StructField("start_date",          DateType(),    False),
+    StructField("end_date",            DateType(),    True),
+    StructField("monthly_amount",      DoubleType(),  False),
+    StructField("auto_renew",          IntegerType(), False),
+    StructField("cancellation_date",   DateType(),    True),
+    StructField("cancellation_reason", StringType(),  True),
+])
+
+contracts_raw = [
+    # (acct_no, product_code, status, start_date, end_date, amount, auto_renew, cancel_date, cancel_reason)
+    ("SA-1001-WH",  "WH-GAS-STD",  "Active",    date(2018,3,15), None,             24.99, 1, None, None),
+    ("SA-1005-WH",  "WH-GAS-PREM", "Active",    date(2016,8,22), None,             34.99, 1, None, None),
+    ("SA-1010-WH",  "WH-GAS-STD",  "Active",    date(2015,4,12), None,             24.99, 1, None, None),
+    ("SA-3001-MUR", "WH-ELEC-STD", "Active",    date(2016,6,1),  None,             19.99, 1, None, None),
+    ("SA-3002-MUR", "WH-ELEC-STD", "Active",    date(2017,2,28), None,             19.99, 1, None, None),
+    ("SA-3003-MUR", "WH-GAS-STD",  "Active",    date(2018,7,19), None,             24.99, 1, None, None),
+    ("SA-3004-MUR", "WH-GAS-STD",  "Active",    date(2020,1,15), None,             24.99, 1, None, None),
+    ("SA-3005-MUR", "WH-GAS-PREM", "Active",    date(2021,3,10), None,             34.99, 1, None, None),
+    ("SA-2001-COM", "WH-GAS-PREM", "Active",    date(2015,11,1), None,             34.99, 1, None, None),
+    ("SA-2003-COM", "WH-GAS-STD",  "Active",    date(2017,9,22), None,             24.99, 1, None, None),
+    ("SA-2005-COM", "WH-GAS-STD",  "Active",    date(2019,10,7), None,             24.99, 1, None, None),
+    ("SA-1001-GAS", "PP-HEAT",     "Active",    date(2018,4,1),  None,             39.99, 1, None, None),
+    ("SA-1003-GAS", "PP-HEAT",     "Active",    date(2017,12,1), None,             39.99, 1, None, None),
+    ("SA-1005-GAS", "PP-HEAT",     "Active",    date(2016,9,1),  None,             39.99, 1, None, None),
+    ("SA-1007-GAS", "PP-HEAT",     "Active",    date(2019,10,1), None,             39.99, 1, None, None),
+    ("SA-1009-GAS", "PP-HEAT",     "Active",    date(2018,3,1),  None,             39.99, 1, None, None),
+    ("SA-1010-GAS", "PP-HEAT",     "Active",    date(2015,5,1),  None,             39.99, 1, None, None),
+    ("SA-1012-GAS", "PP-HEAT",     "Active",    date(2017,9,1),  None,             39.99, 1, None, None),
+    ("SA-1014-GAS", "PP-HEAT",     "Cancelled", date(2016,12,1), date(2022,11,30), 39.99, 0, date(2022,11,30), "Moved out of service area"),
+    ("SA-1016-GAS", "PP-HEAT",     "Active",    date(2019,10,1), None,             39.99, 1, None, None),
+    ("SA-1020-GAS", "PP-HEAT",     "Active",    date(2015,10,1), None,             39.99, 1, None, None),
+    ("SA-1022-GAS", "PP-HEAT",     "Active",    date(2021,5,1),  None,             39.99, 1, None, None),
+    ("SA-1024-GAS", "PP-HEAT",     "Active",    date(2020,1,1),  None,             39.99, 1, None, None),
+    ("SA-1028-GAS", "PP-HEAT",     "Active",    date(2018,11,1), None,             39.99, 1, None, None),
+    ("SA-1029-GAS", "PP-HEAT",     "Active",    date(2017,6,1),  None,             39.99, 1, None, None),
+    ("SA-1003-COOL","PP-COOL",     "Active",    date(2019,5,1),  None,             24.99, 1, None, None),
+    ("SA-1005-GAS", "PP-COOL",     "Active",    date(2016,5,1),  None,             24.99, 1, None, None),
+    ("SA-1007-COOL","PP-COOL",     "Active",    date(2021,6,1),  None,             24.99, 1, None, None),
+    ("SA-1012-COOL","PP-COOL",     "Active",    date(2020,5,1),  None,             24.99, 1, None, None),
+    ("SA-1015-ELEC","PP-COOL",     "Active",    date(2023,2,1),  None,             24.99, 1, None, None),
+    ("SA-1040-GAS", "PP-COOL",     "Active",    date(2022,7,1),  None,             24.99, 1, None, None),
+    ("SA-1001-GAS", "PP-PLUMB",    "Active",    date(2019,1,1),  None,             14.99, 1, None, None),
+    ("SA-1005-GAS", "PP-PLUMB",    "Active",    date(2017,1,1),  None,             14.99, 1, None, None),
+    ("SA-1009-GAS", "PP-PLUMB",    "Active",    date(2020,1,1),  None,             14.99, 1, None, None),
+    ("SA-1018-GAS", "PP-PLUMB",    "Cancelled", date(2019,1,1),  date(2023,6,30),  14.99, 0, date(2023,6,30), "Price sensitivity"),
+    ("SA-1026-GAS", "PP-PLUMB",    "Active",    date(2016,8,1),  None,             14.99, 1, None, None),
+    ("SA-1001-GAS", "PP-ELEC-HM",  "Active",    date(2022,1,1),  None,             19.99, 1, None, None),
+    ("SA-1006-GAS", "PP-ELEC-HM",  "Active",    date(2022,1,1),  None,             19.99, 1, None, None),
+    ("SA-1011-GAS", "PP-ELEC-HM",  "Active",    date(2022,6,1),  None,             19.99, 1, None, None),
+    ("SA-1032-GAS", "PP-ELEC-HM",  "Active",    date(2022,3,1),  None,             19.99, 1, None, None),
+    ("SA-1001-GAS", "SH-BASIC",    "Active",    date(2022,5,1),  None,             29.99, 1, None, None),
+    ("SA-1003-GAS", "SH-BASIC",    "Active",    date(2021,10,1), None,             29.99, 1, None, None),
+    ("SA-1007-GAS", "SH-BASIC",    "Active",    date(2021,1,1),  None,             29.99, 1, None, None),
+    ("SA-1009-GAS", "SH-BASIC",    "Active",    date(2023,2,1),  None,             29.99, 1, None, None),
+    ("SA-1012-GAS", "SH-BASIC",    "Active",    date(2020,1,1),  None,             29.99, 1, None, None),
+    ("SA-1022-GAS", "SH-BASIC",    "Active",    date(2021,6,1),  None,             29.99, 1, None, None),
+    ("SA-1025-GAS", "SH-BASIC",    "Active",    date(2021,1,1),  None,             29.99, 1, None, None),
+    ("SA-1030-GAS", "SH-BASIC",    "Active",    date(2022,1,1),  None,             29.99, 1, None, None),
+    ("SA-1005-GAS", "SH-PREM",     "Active",    date(2022,6,1),  None,             59.99, 1, None, None),
+    ("SA-1010-GAS", "SH-PREM",     "Active",    date(2022,9,1),  None,             59.99, 1, None, None),
+    ("SA-1015-ELEC","SH-PREM",     "Active",    date(2023,3,1),  None,             59.99, 1, None, None),
+    ("SA-1033-GAS", "SH-PREM",     "Active",    date(2022,1,1),  None,             59.99, 1, None, None),
+    ("SA-1040-GAS", "SH-PREM",     "Active",    date(2022,8,1),  None,             59.99, 1, None, None),
+    ("SA-1001-GAS", "ECOBEE-INST", "Active",    date(2022,4,5),  date(2022,4,5),  249.00, 0, None, None),
+    ("SA-1003-GAS", "ECOBEE-INST", "Active",    date(2021,9,12), date(2021,9,12), 249.00, 0, None, None),
+    ("SA-1009-GAS", "ECOBEE-INST", "Active",    date(2023,1,28), date(2023,1,28), 249.00, 0, None, None),
+]
+
+contracts_data = [
+    (i+1, sa_id_map[row[0]], product_code_map[row[1]], row[2], row[3], row[4], row[5], row[6], row[7], row[8])
+    for i, row in enumerate(contracts_raw)
+]
+
+df_contracts = spark.createDataFrame(contracts_data, schema=contracts_schema)
+df_contracts.write.format("delta").mode("overwrite").saveAsTable(f"{DEMO_LAKEHOUSE}.contracts")
+print(f"  contracts: {df_contracts.count()} rows written")
+
+
+# ---------------------------------------------------------------------------
+# CELL 8 — Service Requests (30 rows)
+# ---------------------------------------------------------------------------
+from pyspark.sql.types import *
+from datetime import date
+
+serial_id_map = {row[5]: row[0] for row in equip_raw}
+
+sr_schema = StructType([
+    StructField("request_id",         IntegerType(), False),
+    StructField("service_account_id", IntegerType(), False),
+    StructField("equipment_id",       IntegerType(), True),
+    StructField("request_type",       StringType(),  False),
+    StructField("priority",           StringType(),  False),
+    StructField("status",             StringType(),  False),
+    StructField("description",        StringType(),  True),
+    StructField("created_date",       DateType(),    False),
+    StructField("scheduled_date",     DateType(),    True),
+    StructField("completed_date",     DateType(),    True),
+    StructField("technician_id",      IntegerType(), True),
+    StructField("resolution_notes",   StringType(),  True),
+])
+
+sr_raw = [
+    # (acct_no, serial, type, priority, status, description, created, scheduled, completed, tech_id, notes)
+    ("SA-1001-WH",  "RH2019-041847", "Maintenance",      "Low",       "Completed", "Annual flushing and anode rod check",        date(2022,11,15), date(2022,11,22), date(2022,11,22), 1012, "Anode rod 50% depleted, advised replacement within 2 years"),
+    ("SA-1005-WH",  "BW2016-088231", "Emergency Repair", "Emergency", "Completed", "No hot water — pilot light out",             date(2023,2,8),   date(2023,2,8),   date(2023,2,8),   1007, "Thermocouple replaced, pilot relit, system tested OK"),
+    ("SA-1010-GAS", "LX2015-105522", "Maintenance",      "Low",       "Completed", "Annual furnace tune-up",                    date(2022,9,20),  date(2022,10,5),  date(2022,10,5),  1023, "Filter replaced, heat exchanger inspected, combustion analysis done"),
+    ("SA-1003-GAS", "CR2017-203811", "Emergency Repair", "High",      "Completed", "Furnace not starting — ignitor fault",       date(2023,1,12),  date(2023,1,13),  date(2023,1,13),  1007, "Hot surface ignitor cracked and replaced"),
+    ("SA-1007-COOL","LX2021-AC9920", "Maintenance",      "Low",       "Completed", "Spring AC startup check",                   date(2023,5,2),   date(2023,5,8),   date(2023,5,8),   1019, "Refrigerant level OK, capacitor tested, coils cleaned"),
+    ("SA-1012-COOL","GD2020-AC7741", "Emergency Repair", "High",      "Completed", "AC not cooling — refrigerant leak suspect",  date(2023,7,15),  date(2023,7,15),  date(2023,7,15),  1011, "Refrigerant leak found at service valve, repaired and recharged"),
+    ("SA-1009-GAS", "LX2018-208410", "Maintenance",      "Low",       "Completed", "Annual furnace inspection",                 date(2022,10,10), date(2022,10,18), date(2022,10,18), 1023, "System clean, blower motor lubricated, all safeties tested"),
+    ("SA-1016-GAS", "GD2019-394812", "Maintenance",      "Low",       "Completed", "Annual furnace tune-up",                    date(2023,9,25),  date(2023,10,3),  date(2023,10,3),  1015, "Completed standard inspection, new filter installed"),
+    ("SA-1005-GAS", "YK2016-094520", "Maintenance",      "Low",       "Completed", "Annual furnace inspection",                 date(2023,9,28),  date(2023,10,10), date(2023,10,10), 1023, "All checks pass, heat exchanger clear"),
+    ("SA-2001-COM", "RH2015-COM001", "Maintenance",      "Medium",    "Completed", "Quarterly commercial WH service",           date(2023,8,1),   date(2023,8,7),   date(2023,8,7),   1031, "Sediment flush completed, temperature verified at 60C"),
+    ("SA-1001-GAS", "EB2022-TH3341", "Installation",     "Low",       "Completed", "ecobee thermostat install with app setup",  date(2022,4,4),   date(2022,4,5),   date(2022,4,5),   1019, "ecobee SmartThermostat Premium installed, integrated with furnace and AC"),
+    ("SA-1003-GAS", "EB2021-TH1192", "Installation",     "Low",       "Completed", "ecobee enhanced thermostat install",        date(2021,9,10),  date(2021,9,12),  date(2021,9,12),  1019, "ecobee SmartThermostat Enhanced installed and WiFi configured"),
+    ("SA-1015-ELEC","CR2023-HP0041", "Installation",     "Medium",    "Completed", "Heat pump install — replacing gas furnace", date(2023,1,30),  date(2023,2,10),  date(2023,2,10),  1008, "Carrier Infinity 20 installed, old furnace removed, system commissioned"),
+    ("SA-1020-GAS", "LX2015-105522", "Emergency Repair", "High",      "Completed", "Furnace tripping limit switch repeatedly",  date(2023,12,21), date(2023,12,21), date(2023,12,21), 1007, "Dirty filter caused overheating, filter replaced, limit reset, all OK"),
+    ("SA-1029-GAS", None,            "Maintenance",      "Low",       "Completed", "Annual maintenance check",                  date(2023,10,5),  date(2023,10,12), date(2023,10,12), 1015, "Inspection completed, minor adjustment to gas pressure"),
+    ("SA-1018-GAS", None,            "Maintenance",      "Low",       "InProgress","Annual gas line inspection",                date(2024,4,20),  date(2024,4,28),  None,             1023, None),
+    ("SA-1033-GAS", None,            "Maintenance",      "Low",       "InProgress","Annual furnace tune-up booking",            date(2024,4,18),  date(2024,4,30),  None,             1015, None),
+    ("SA-3001-MUR", "RH2016-MUR001", "Maintenance",      "Medium",    "InProgress","Building WH annual service",               date(2024,4,22),  date(2024,4,25),  None,             1031, None),
+    ("SA-1002-GAS", None,            "Maintenance",      "Low",       "Open",      "Customer-requested annual gas safety check",date(2024,4,28),  None,             None,             None, None),
+    ("SA-1004-GAS", None,            "Maintenance",      "Low",       "Open",      "First annual furnace check (new build)",    date(2024,4,25),  None,             None,             None, None),
+    ("SA-1006-GAS", None,            "Inspection",       "Medium",    "Open",      "Gas smell reported — investigate",          date(2024,4,30),  None,             None,             None, None),
+    ("SA-1011-GAS", None,            "Emergency Repair", "High",      "Open",      "No heat — furnace off, house 14C",          date(2024,4,29),  None,             None,             None, None),
+    ("SA-1013-GAS", None,            "Maintenance",      "Low",       "Open",      "Protection plan annual furnace service",    date(2024,4,27),  None,             None,             None, None),
+    ("SA-1017-GAS", None,            "Inspection",       "Low",       "Open",      "Carbon monoxide detector triggered",        date(2024,4,26),  date(2024,5,2),   None,             None, None),
+    ("SA-1019-GAS", None,            "Maintenance",      "Low",       "Open",      "Annual furnace check requested by steward", date(2024,4,23),  None,             None,             None, None),
+    ("SA-1021-GAS", None,            "Emergency Repair", "Emergency", "Open",      "Water heater flooding — shut-off needed",   date(2024,4,30),  None,             None,             None, None),
+    ("SA-1023-GAS", None,            "Maintenance",      "Low",       "Open",      "Pre-winter furnace inspection",             date(2024,4,24),  None,             None,             None, None),
+    ("SA-1027-GAS", None,            "Installation",     "Medium",    "Open",      "New ecobee install — new construction",     date(2024,4,29),  date(2024,5,3),   None,             None, None),
+    ("SA-2002-COM", None,            "Inspection",       "High",      "Open",      "Smoke detector triggered in HVAC room",     date(2024,4,30),  None,             None,             None, None),
+    ("SA-3005-MUR", "BW2021-MUR001", "Emergency Repair", "High",      "Open",      "WH leaking — multi-unit building floor 3",  date(2024,4,30),  None,             None,             None, None),
+]
+
+sr_data = [
+    (i+1, sa_id_map[row[0]], serial_id_map.get(row[1]) if row[1] else None,
+     row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], row[10])
+    for i, row in enumerate(sr_raw)
+]
+
+df_sr = spark.createDataFrame(sr_data, schema=sr_schema)
+df_sr.write.format("delta").mode("overwrite").saveAsTable(f"{DEMO_LAKEHOUSE}.service_requests")
+print(f"  service_requests: {df_sr.count()} rows written")
+
+
+# ---------------------------------------------------------------------------
+# CELL 9 — Billing Transactions (computed ~585 rows)
+# ---------------------------------------------------------------------------
+from pyspark.sql.types import *
+from datetime import date, timedelta
+
+billing_schema = StructType([
+    StructField("transaction_id",    IntegerType(), False),
+    StructField("contract_id",       IntegerType(), False),
+    StructField("service_account_id",IntegerType(), False),
+    StructField("transaction_type",  StringType(),  False),
+    StructField("transaction_date",  DateType(),    False),
+    StructField("due_date",          DateType(),    True),
+    StructField("amount",            DoubleType(),  False),
+    StructField("tax_amount",        DoubleType(),  False),
+    StructField("payment_method",    StringType(),  True),
+    StructField("status",            StringType(),  False),
+    StructField("invoice_number",    StringType(),  True),
+])
+
+_onetime = {"ECOBEE-INST"}
+_pay_methods = ["DirectDebit", "CreditCard", "Online"]
+billing_data = []
+txn_id = 1
+monthly_charges = []
+
+for i, row in enumerate(contracts_raw):
+    cid = i + 1
+    sa_id = sa_id_map[row[0]]
+    product_code, status, start_date, monthly_amount = row[1], row[2], row[3], row[5]
+
+    if product_code in _onetime:
+        due = start_date + timedelta(days=30)
+        billing_data.append((txn_id, cid, sa_id, "OneTimeCharge", start_date, due,
+                              monthly_amount, round(monthly_amount * 0.13, 2),
+                              "CreditCard", "Posted", f"INV-OT-{cid:05d}"))
+        txn_id += 1
+    elif status == "Active":
+        pm = _pay_methods[cid % 3]
+        for m in range(6):
+            txn_date = date(2024, m + 1, 1)
+            invoice = f"INV-2024{m+1:02d}-{cid:05d}"
+            billing_data.append((txn_id, cid, sa_id, "MonthlyCharge",
+                                  txn_date, txn_date + timedelta(days=15),
+                                  monthly_amount, round(monthly_amount * 0.13, 2),
+                                  pm, "Posted", invoice))
+            monthly_charges.append((txn_id, cid, sa_id, txn_date, monthly_amount, pm, invoice))
+            txn_id += 1
+
+for _, cid, sa_id, txn_date, amount, pm, invoice in monthly_charges:
+    if cid % 10 != 7:
+        billing_data.append((txn_id, cid, sa_id, "Payment",
+                              txn_date + timedelta(days=10), None,
+                              -round(amount + round(amount * 0.13, 2), 2), 0.0,
+                              pm, "Paid", invoice))
+        txn_id += 1
+
+df_billing = spark.createDataFrame(billing_data, schema=billing_schema)
+df_billing.write.format("delta").mode("overwrite").saveAsTable(f"{DEMO_LAKEHOUSE}.billing_transactions")
+print(f"  billing_transactions: {df_billing.count()} rows written")
+
+
+# ---------------------------------------------------------------------------
+# CELL 10 — Validation (all 7 tables)
+# ---------------------------------------------------------------------------
+print("\n=== Row counts ===")
+for tbl in ["customers", "service_accounts", "products", "equipment_registry",
+            "contracts", "service_requests", "billing_transactions"]:
+    n = spark.table(f"{DEMO_LAKEHOUSE}.{tbl}").count()
+    print(f"  {tbl:<30} {n:>5} rows")
+
+print("\nSetup complete.  Run nb_02_pbi_star_schema.py next.")
+
+
+# ---------------------------------------------------------------------------
+# CELL 11 — Session cleanup
+# ---------------------------------------------------------------------------
+spark.catalog.clearCache()
+print("Session cache cleared.")

@@ -1,0 +1,71 @@
+table dim_equipment
+    column EquipmentKey
+        dataType: int64
+        isKey: true
+        sourceColumn: EquipmentKey
+
+    column ServiceAccountKey
+        dataType: int64
+        sourceColumn: ServiceAccountKey
+
+    column EquipmentType
+        dataType: string
+        sourceColumn: EquipmentType
+
+    column Make
+        dataType: string
+        sourceColumn: Make
+
+    column Model
+        dataType: string
+        sourceColumn: Model
+
+    column SerialNumber
+        dataType: string
+        sourceColumn: SerialNumber
+
+    column OwnershipType
+        dataType: string
+        sourceColumn: OwnershipType
+
+    column FuelType
+        dataType: string
+        sourceColumn: FuelType
+
+    column InstallDate
+        dataType: dateTime
+        sourceColumn: InstallDate
+        formatString: yyyy-MM-dd
+
+    column WarrantyExpiry
+        dataType: dateTime
+        sourceColumn: WarrantyExpiry
+        formatString: yyyy-MM-dd
+
+    column Status
+        dataType: string
+        sourceColumn: Status
+
+    column InstallDateKey
+        dataType: int64
+        sourceColumn: InstallDateKey
+
+    column WarrantyExpiryDateKey
+        dataType: int64
+        sourceColumn: WarrantyExpiryDateKey
+
+    column AgeYears
+        dataType: double
+        sourceColumn: AgeYears
+        formatString: #,0.0
+
+    column IsUnderWarranty
+        dataType: int64
+        sourceColumn: IsUnderWarranty
+
+    partition dim_equipment = entityPartition
+        mode: directLake
+        source
+            entityName: dim_equipment
+            schemaName: dbo
+            expressionSource: EnercareDemo

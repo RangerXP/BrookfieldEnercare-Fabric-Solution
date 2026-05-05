@@ -1,5 +1,5 @@
 # =============================================================================
-# nb_02_metadata_pipeline_demo.py
+# nb_03_metadata_pipeline_demo.py
 # Fabric Notebook — Full Metadata Pipeline (all 5 phases, demo mode)
 #
 # Architecture reference: README.md — phases 0–5
@@ -15,6 +15,7 @@
 #
 # Prereqs  : Attach to lh_enercare_demo (default) AND lh_metadata (secondary)
 #            Run nb_01_setup_demo_environment.py first.
+#            Run nb_02_pbi_star_schema.py second.
 # =============================================================================
 
 
@@ -263,8 +264,8 @@ for name, mod in SQL_MODULES.items():
 
 HEADER_RE = re.compile(r'/\*\s*(.*?)\s*\*/', re.DOTALL)
 
-# Matches "@tag: value" blocks; value ends at the next "@tag:" or end of header
-TAG_RE = re.compile(r'@(\w+):\s*((?:(?!@\w+:)[\s\S])*)', re.DOTALL)
+# Matches "@word:" (simple) or "@word subname:" (column/kpi compound tags)
+_TAG_LINE_RE = re.compile(r'^@(\w+)(?:\s+([\w_]+))?:\s*(.*)')
 
 
 def _compute_hash(text: str) -> str:
@@ -273,55 +274,56 @@ def _compute_hash(text: str) -> str:
 
 def parse_module_header(name: str, mod: dict) -> dict:
     """
-    Parse the leading /* */ comment block from a SQL module definition.
-    Returns a flat dict of scalar tags + lists for @column / @kpi / @upstream.
+    Line-based parser for structured /* */ header comments.
+    Handles both simple @tag: value and compound @tag subname: value formats.
+    Multi-line values are gathered from continuation lines (no leading @).
     """
     definition = mod["definition"]
     header_match = HEADER_RE.search(definition)
     if not header_match:
         return {"_name": name, "_type": mod["type"], "_raw_found": False}
 
-    header_text = header_match.group(1)
     result = {
-        "_name":       name,
-        "_type":       mod["type"],
-        "_hash":       _compute_hash(definition),
-        "_raw_found":  True,
-        "columns":     {},   # column_name → description
-        "kpis":        [],   # list of {name, kpi_type, formula, unit}
-        "upstream":    [],   # list of "schema.table" strings
+        "_name":      name,
+        "_type":      mod["type"],
+        "_hash":      _compute_hash(definition),
+        "_raw_found": True,
+        "columns":    {},
+        "kpis":       [],
+        "upstream":   [],
     }
 
-    for m in TAG_RE.finditer(header_text):
-        tag   = m.group(1).strip()
-        value = m.group(2).strip()
+    cur_tag, cur_sub, cur_lines = None, None, []
 
-        if tag == "column":
-            # "@column col_name: description text"
-            colon_pos = value.find(":")
-            if colon_pos > 0:
-                col_name = value[:colon_pos].strip()
-                col_desc = value[colon_pos+1:].strip()
-                result["columns"][col_name] = col_desc
+    def _flush():
+        if cur_tag is None:
+            return
+        val = re.sub(r'\s+', ' ', ' '.join(cur_lines)).strip()
+        if cur_tag == "column" and cur_sub:
+            result["columns"][cur_sub] = val
+        elif cur_tag == "kpi" and cur_sub:
+            parts = [p.strip() for p in val.split("|")]
+            result["kpis"].append({
+                "name":     cur_sub,
+                "kpi_type": parts[0] if parts else None,
+                "formula":  parts[1] if len(parts) > 1 else None,
+                "unit":     parts[2] if len(parts) > 2 else None,
+            })
+        elif cur_tag == "upstream":
+            result["upstream"] = [u.strip() for u in val.split("|")]
+        elif cur_sub is None:
+            result[cur_tag] = val
 
-        elif tag == "kpi":
-            # "@kpi kpi_name: kpi_type | formula | unit"
-            colon_pos = value.find(":")
-            if colon_pos > 0:
-                kpi_name  = value[:colon_pos].strip()
-                kpi_parts = [p.strip() for p in value[colon_pos+1:].split("|")]
-                result["kpis"].append({
-                    "name":     kpi_name,
-                    "kpi_type": kpi_parts[0] if len(kpi_parts) > 0 else None,
-                    "formula":  kpi_parts[1] if len(kpi_parts) > 1 else None,
-                    "unit":     kpi_parts[2] if len(kpi_parts) > 2 else None,
-                })
-
-        elif tag == "upstream":
-            result["upstream"] = [u.strip() for u in value.split("|")]
-
-        else:
-            result[tag] = value
+    for line in header_match.group(1).splitlines():
+        m = _TAG_LINE_RE.match(line.strip())
+        if m:
+            _flush()
+            cur_tag  = m.group(1)
+            cur_sub  = m.group(2)       # None for simple tags
+            cur_lines = [m.group(3)] if m.group(3).strip() else []
+        elif cur_tag is not None:
+            cur_lines.append(line.strip())
+    _flush()
 
     return result
 
@@ -525,7 +527,7 @@ SELECT
     c.status,
     c.city,
     c.postal_code,
-    DATEDIFF(c.created_date, current_date()) * -1   AS tenure_months,
+    CAST(MONTHS_BETWEEN(current_date(), c.created_date) AS INT)  AS tenure_months,
     COUNT(DISTINCT sa.service_account_id)            AS service_account_count
 FROM {DEMO_LAKEHOUSE}.customers c
 LEFT JOIN {DEMO_LAKEHOUSE}.service_accounts sa ON sa.customer_id = c.customer_id
@@ -736,3 +738,10 @@ print("  2. Set DEMO_MODE = False")
 print("  3. Provide SQL Server JDBC credentials (Cell 1)")
 print("  4. Provide Purview service principal credentials (Cell 1)")
 print("  5. Schedule this notebook on 15-min trigger (matches README Phase 2)")
+
+
+# ===========================================================================
+# CELL 11 — Session cleanup
+# ===========================================================================
+spark.catalog.clearCache()
+print("Session cache cleared.")

@@ -1,0 +1,64 @@
+table fct_service_request
+    column RequestKey
+        dataType: int64
+        isKey: true
+        sourceColumn: RequestKey
+
+    column ServiceAccountKey
+        dataType: int64
+        sourceColumn: ServiceAccountKey
+
+    column CustomerKey
+        dataType: int64
+        sourceColumn: CustomerKey
+
+    column EquipmentKey
+        dataType: int64
+        sourceColumn: EquipmentKey
+
+    column CreatedDateKey
+        dataType: int64
+        sourceColumn: CreatedDateKey
+
+    column ScheduledDateKey
+        dataType: int64
+        sourceColumn: ScheduledDateKey
+
+    column CompletedDateKey
+        dataType: int64
+        sourceColumn: CompletedDateKey
+
+    column RequestType
+        dataType: string
+        sourceColumn: RequestType
+
+    column Priority
+        dataType: string
+        sourceColumn: Priority
+
+    column Status
+        dataType: string
+        sourceColumn: Status
+
+    column Description
+        dataType: string
+        sourceColumn: Description
+
+    column TechnicianId
+        dataType: int64
+        sourceColumn: TechnicianId
+
+    column IsSlaBreachFlag
+        dataType: int64
+        sourceColumn: IsSlaBreachFlag
+
+    column DaysToComplete
+        dataType: int64
+        sourceColumn: DaysToComplete
+
+    partition fct_service_request = entityPartition
+        mode: directLake
+        source
+            entityName: fct_service_request
+            schemaName: dbo
+            expressionSource: EnercareDemo

@@ -1,0 +1,57 @@
+table dim_customer
+    column CustomerKey
+        dataType: int64
+        isKey: true
+        sourceColumn: CustomerKey
+
+    column AccountNumber
+        dataType: string
+        sourceColumn: AccountNumber
+
+    column FirstName
+        dataType: string
+        sourceColumn: FirstName
+
+    column LastName
+        dataType: string
+        sourceColumn: LastName
+
+    column Email
+        dataType: string
+        sourceColumn: Email
+
+    column CustomerType
+        dataType: string
+        sourceColumn: CustomerType
+
+    column Status
+        dataType: string
+        sourceColumn: Status
+
+    column City
+        dataType: string
+        sourceColumn: City
+
+    column Province
+        dataType: string
+        sourceColumn: Province
+
+    column PostalCode
+        dataType: string
+        sourceColumn: PostalCode
+
+    column FSA
+        dataType: string
+        sourceColumn: FSA
+
+    column CreatedDate
+        dataType: dateTime
+        sourceColumn: CreatedDate
+        formatString: yyyy-MM-dd
+
+    partition dim_customer = entityPartition
+        mode: directLake
+        source
+            entityName: dim_customer
+            schemaName: dbo
+            expressionSource: EnercareDemo

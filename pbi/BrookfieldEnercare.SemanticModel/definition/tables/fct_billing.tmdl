@@ -1,0 +1,67 @@
+table fct_billing
+    column TransactionKey
+        dataType: int64
+        isKey: true
+        sourceColumn: TransactionKey
+
+    column ContractKey
+        dataType: int64
+        sourceColumn: ContractKey
+
+    column ServiceAccountKey
+        dataType: int64
+        sourceColumn: ServiceAccountKey
+
+    column CustomerKey
+        dataType: int64
+        sourceColumn: CustomerKey
+
+    column ProductKey
+        dataType: int64
+        sourceColumn: ProductKey
+
+    column TransactionDateKey
+        dataType: int64
+        sourceColumn: TransactionDateKey
+
+    column DueDateKey
+        dataType: int64
+        sourceColumn: DueDateKey
+
+    column TransactionType
+        dataType: string
+        sourceColumn: TransactionType
+
+    column Amount
+        dataType: double
+        sourceColumn: Amount
+        formatString: \$#,0.00
+
+    column TaxAmount
+        dataType: double
+        sourceColumn: TaxAmount
+        formatString: \$#,0.00
+
+    column TotalAmount
+        dataType: double
+        sourceColumn: TotalAmount
+        formatString: \$#,0.00
+
+    column PaymentMethod
+        dataType: string
+        sourceColumn: PaymentMethod
+
+    column Status
+        dataType: string
+        sourceColumn: Status
+
+    column InvoiceNumber
+        dataType: string
+        sourceColumn: InvoiceNumber
+
+    partition fct_billing = entityPartition
+        mode: directLake
+        source
+            entityName: fct_billing
+            schemaName: dbo
+            expressionSource: EnercareDemo
