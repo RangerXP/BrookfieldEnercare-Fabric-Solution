@@ -1,0 +1,72 @@
+relationship fct_billing_TransactionDateKey_dim_date_DateKey
+	fromTable: fct_billing
+	fromColumn: TransactionDateKey
+	toTable: dim_date
+	toColumn: DateKey
+
+relationship fct_billing_ServiceAccountKey_dim_service_account_ServiceAccountKey
+	fromTable: fct_billing
+	fromColumn: ServiceAccountKey
+	toTable: dim_service_account
+	toColumn: ServiceAccountKey
+
+relationship fct_billing_ProductKey_dim_product_ProductKey
+	fromTable: fct_billing
+	fromColumn: ProductKey
+	toTable: dim_product
+	toColumn: ProductKey
+
+relationship fct_service_request_CreatedDateKey_dim_date_DateKey
+	fromTable: fct_service_request
+	fromColumn: CreatedDateKey
+	toTable: dim_date
+	toColumn: DateKey
+
+relationship fct_service_request_CompletedDateKey_dim_date_DateKey
+	fromTable: fct_service_request
+	fromColumn: CompletedDateKey
+	toTable: dim_date
+	toColumn: DateKey
+	isActive: false
+
+relationship fct_service_request_ServiceAccountKey_dim_service_account_ServiceAccountKey
+	fromTable: fct_service_request
+	fromColumn: ServiceAccountKey
+	toTable: dim_service_account
+	toColumn: ServiceAccountKey
+
+relationship fct_service_request_EquipmentKey_dim_equipment_EquipmentKey
+	fromTable: fct_service_request
+	fromColumn: EquipmentKey
+	toTable: dim_equipment
+	toColumn: EquipmentKey
+
+relationship fct_contract_month_BillingMonthDateKey_dim_date_DateKey
+	fromTable: fct_contract_month
+	fromColumn: BillingMonthDateKey
+	toTable: dim_date
+	toColumn: DateKey
+
+relationship fct_contract_month_ServiceAccountKey_dim_service_account_ServiceAccountKey
+	fromTable: fct_contract_month
+	fromColumn: ServiceAccountKey
+	toTable: dim_service_account
+	toColumn: ServiceAccountKey
+
+relationship fct_contract_month_ProductKey_dim_product_ProductKey
+	fromTable: fct_contract_month
+	fromColumn: ProductKey
+	toTable: dim_product
+	toColumn: ProductKey
+
+relationship dim_service_account_CustomerKey_dim_customer_CustomerKey
+	fromTable: dim_service_account
+	fromColumn: CustomerKey
+	toTable: dim_customer
+	toColumn: CustomerKey
+
+relationship dim_equipment_ServiceAccountKey_dim_service_account_ServiceAccountKey
+	fromTable: dim_equipment
+	fromColumn: ServiceAccountKey
+	toTable: dim_service_account
+	toColumn: ServiceAccountKey
