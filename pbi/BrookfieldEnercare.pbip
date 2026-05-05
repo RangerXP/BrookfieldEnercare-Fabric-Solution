@@ -5,6 +5,11 @@
       "report": {
         "path": "BrookfieldEnercare.Report"
       }
+    },
+    {
+      "dataset": {
+        "path": "BrookfieldEnercare.SemanticModel"
+      }
     }
   ],
   "settings": {
