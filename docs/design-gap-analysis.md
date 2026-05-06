@@ -18,15 +18,15 @@
 |---|---|---|---|---|
 | G1 | Canonical metadata store | P1 | 🟡 In Progress | Sean |
 | G2 | Certified KPI definitions | P1 | 🟡 In Progress | Sean |
-| G3 | Metadata write-back to semantic model | P1 | 🔴 Not Started | Sean |
+| G3 | Metadata write-back to semantic model | P1 | 🔴 Not Started | Ajay |
 | G4 | Copilot "prep data for AI" | P2 | 🔴 Not Started | Sean |
-| G5 | Standalone Copilot governance | P2 | ⏸ Blocked | Naunihal |
-| G6 | Purview integration (descriptions + glossary) | P2 | 🔴 Not Started | Sean |
-| G7 | Lineage registration in Purview | P3 | 🔴 Not Started | Sean |
-| G8 | AI gap-fill for sparse metadata | P2 | 🔴 Not Started | Sean |
-| G9 | Steward approval workflow | P3 | 🔴 Not Started | TBD |
-| G10 | Ontology layer | P3 | 🔴 Not Started | Sean + Christopher |
-| G11 | B2C chatbot (structured + unstructured) | P4 | ⏸ Blocked | Jonson / Naunihal |
+| G5 | Standalone Copilot governance | P2 | ⏸ Blocked | Alison |
+| G6 | Purview integration (descriptions + glossary) | P2 | 🔴 Not Started | Alison |
+| G7 | Lineage registration in Purview | P3 | 🔴 Not Started | Ajay / Alison |
+| G8 | AI gap-fill for sparse metadata | P2 | 🔴 Not Started | Ajay |
+| G9 | Steward approval workflow | P3 | 🔴 Not Started | Alison |
+| G10 | Ontology layer | P3 | 🔴 Not Started | Alison + Christopher |
+| G11 | B2C chatbot (structured + unstructured) | P4 | ⏸ Blocked | Ajay / Sean |
 
 ---
 
@@ -90,12 +90,12 @@ Enercare has hundreds of purpose-built Power BI models with divergent KPI logic.
 
 | # | Task | Status | Owner | Notes |
 |---|---|---|---|---|
-| G3-1 | Design TMDL template for table/column description injection | 🔴 Not Started | Sean | Template per table file in `/pbi/BrookfieldEnercare.SemanticModel/definition/tables/` |
-| G3-2 | Build `nb_04_generate_tmdl.py` — reads `vw_business_metadata_current`, renders TMDL files | 🔴 Not Started | Sean | Core pipeline notebook |
-| G3-3 | Add AI instructions injection from `ai_metadata` into TMDL model-level block | 🔴 Not Started | Sean | Requires G1-4 complete |
-| G3-4 | Add verified answers injection from `ai_metadata` into TMDL | 🔴 Not Started | Sean | Requires G1-4 complete |
-| G3-5 | Git commit + push step in nb_04 (via Fabric Files API or OneLake DFS write + manual sync) | 🔴 Not Started | Sean | Determine push mechanism |
-| G3-6 | Test: run nb_04, verify TMDL diffs are correct, sync to Fabric, confirm descriptions appear in semantic model | 🔴 Not Started | Sean | |
+| G3-1 | Design TMDL template for table/column description injection | 🔴 Not Started | Ajay | Template per table file in `/pbi/BrookfieldEnercare.SemanticModel/definition/tables/` |
+| G3-2 | Build `nb_04_generate_tmdl.py` — reads `vw_business_metadata_current`, renders TMDL files | 🔴 Not Started | Ajay | Core pipeline notebook |
+| G3-3 | Add AI instructions injection from `ai_metadata` into TMDL model-level block | 🔴 Not Started | Ajay | Requires G1-4 complete |
+| G3-4 | Add verified answers injection from `ai_metadata` into TMDL | 🔴 Not Started | Ajay | Requires G1-4 complete |
+| G3-5 | Git commit + push step in nb_04 (via Fabric Files API or OneLake DFS write + manual sync) | 🔴 Not Started | Ajay | Determine push mechanism |
+| G3-6 | Test: run nb_04, verify TMDL diffs are correct, sync to Fabric, confirm descriptions appear in semantic model | 🔴 Not Started | Ajay | |
 | G3-7 | Document the approach for Christopher as the answer to the TOM/Windows VM question | 🟢 Done | Sean | Captured in meeting action items section of this doc |
 
 ---
@@ -124,17 +124,17 @@ Enercare has hundreds of purpose-built Power BI models with divergent KPI logic.
 
 **Priority:** P2 — unblocks self-service at scale  
 **Goal:** Standalone Copilot enabled in tenant, restricted to certified semantic models only. Business users can query across certified models without exposing all 300+ models.  
-**Status:** ⏸ Blocked — pending Naunihal sharing tenant settings documentation with Christopher's team  
-**Dependency:** IT admin access; Naunihal's follow-up from meeting
+**Status:** ⏸ Blocked — pending Alison sharing tenant settings documentation with Christopher's team  
+**Dependency:** IT admin access; Alison's follow-up from meeting
 
 ### Tasks
 
 | # | Task | Status | Owner | Notes |
 |---|---|---|---|---|
-| G5-1 | Share Standalone Copilot tenant settings + enablement steps with Christopher's team | 🔴 Not Started | Naunihal | Meeting action item |
+| G5-1 | Share Standalone Copilot tenant settings + enablement steps with Christopher's team | 🔴 Not Started | Alison | Meeting action item |
 | G5-2 | Create "Certified Models" security group in Entra ID | 🔴 Not Started | Christopher / IT | |
 | G5-3 | Add BrookfieldEnercare semantic model to approved list in tenant settings | 🔴 Not Started | Fabric admin | |
-| G5-4 | Test: confirm Standalone Copilot surfaces only certified models for test users | 🔴 Not Started | Sean + Naunihal | |
+| G5-4 | Test: confirm Standalone Copilot surfaces only certified models for test users | 🔴 Not Started | Sean + Alison | |
 
 ---
 
@@ -149,14 +149,14 @@ Enercare has hundreds of purpose-built Power BI models with divergent KPI logic.
 
 | # | Task | Status | Owner | Notes |
 |---|---|---|---|---|
-| G6-1 | Register Entra ID app registration for Purview API access; grant `Data Curator` role | 🔴 Not Started | Sean / IT | |
-| G6-2 | Store client ID + secret in Fabric notebook environment variables or Key Vault | 🔴 Not Started | Sean | |
-| G6-3 | Build `nb_05_purview_push.py` — reads `vw_business_metadata_current`, pushes to Atlas API | 🔴 Not Started | Sean | Adapt `06_purview_push_descriptions.py` from archive |
-| G6-4 | Push asset and column descriptions to `mssql_column` qualified names (source assets) | 🔴 Not Started | Sean | |
-| G6-5 | Push asset and column descriptions to `fabric_lakehouse_table_column` qualified names (OneLake) | 🔴 Not Started | Sean | New vs. original design |
-| G6-6 | Push certified KPIs as Purview business glossary terms with owner assignment | 🔴 Not Started | Sean | Only `IsCertified = 1` rows |
-| G6-7 | Push sensitivity labels from `sensitivity_classification` as MIP label mappings | 🔴 Not Started | Sean | |
-| G6-8 | Test: verify assets appear in Purview with correct descriptions and glossary term assignments | 🔴 Not Started | Sean + Christopher | |
+| G6-1 | Register Entra ID app registration for Purview API access; grant `Data Curator` role | 🔴 Not Started | Alison | |
+| G6-2 | Store client ID + secret in Fabric notebook environment variables or Key Vault | 🔴 Not Started | Alison | |
+| G6-3 | Build `nb_05_purview_push.py` — reads `vw_business_metadata_current`, pushes to Atlas API | 🔴 Not Started | Alison | Adapt `06_purview_push_descriptions.py` from archive |
+| G6-4 | Push asset and column descriptions to `mssql_column` qualified names (source assets) | 🔴 Not Started | Alison | |
+| G6-5 | Push asset and column descriptions to `fabric_lakehouse_table_column` qualified names (OneLake) | 🔴 Not Started | Alison | New vs. original design |
+| G6-6 | Push certified KPIs as Purview business glossary terms with owner assignment | 🔴 Not Started | Alison | Only `IsCertified = 1` rows |
+| G6-7 | Push sensitivity labels from `sensitivity_classification` as MIP label mappings | 🔴 Not Started | Alison | |
+| G6-8 | Test: verify assets appear in Purview with correct descriptions and glossary term assignments | 🔴 Not Started | Alison + Christopher | |
 
 ---
 
@@ -171,12 +171,12 @@ Enercare has hundreds of purpose-built Power BI models with divergent KPI logic.
 
 | # | Task | Status | Owner | Notes |
 |---|---|---|---|---|
-| G7-1 | Populate `lineage_edges` table for all known transformation steps | 🔴 Not Started | Sean | Source → lh_enercare_demo → star schema → semantic model |
-| G7-2 | Build `nb_06_purview_lineage.py` — registers Atlas Process entities per lineage edge | 🔴 Not Started | Sean | Adapt `07_purview_register_lineage.py` from archive |
-| G7-3 | Register: SQL view → source table edge (view/proc as upstream node) | 🔴 Not Started | Sean | |
-| G7-4 | Register: nb_03 notebook → star schema tables edge | 🔴 Not Started | Sean | |
-| G7-5 | Register: star schema table → semantic model column edge (Direct Lake) | 🔴 Not Started | Sean | |
-| G7-6 | Test: confirm lineage graph in Purview shows three hops for a sample column | 🔴 Not Started | Sean + Christopher | |
+| G7-1 | Populate `lineage_edges` table for all known transformation steps | 🔴 Not Started | Alison | Source → lh_enercare_demo → star schema → semantic model |
+| G7-2 | Build `nb_06_purview_lineage.py` — registers Atlas Process entities per lineage edge | 🔴 Not Started | Ajay | Adapt `07_purview_register_lineage.py` from archive |
+| G7-3 | Register: SQL view → source table edge (view/proc as upstream node) | 🔴 Not Started | Ajay | |
+| G7-4 | Register: nb_03 notebook → star schema tables edge | 🔴 Not Started | Ajay | |
+| G7-5 | Register: star schema table → semantic model column edge (Direct Lake) | 🔴 Not Started | Ajay | |
+| G7-6 | Test: confirm lineage graph in Purview shows three hops for a sample column | 🔴 Not Started | Alison + Christopher | |
 
 ---
 
@@ -191,9 +191,9 @@ Enercare has hundreds of purpose-built Power BI models with divergent KPI logic.
 
 | # | Task | Status | Owner | Notes |
 |---|---|---|---|---|
-| G8-1 | Build `nb_07_ai_gap_fill.py` — queries `lh_metadata` for rows where `Description IS NULL`, calls `ai_generate_text()` | 🔴 Not Started | Sean | Fabric-native replacement for `ai_gap_fill.py` in archive |
-| G8-2 | Write drafts with `IsDraft = 1` — do not propagate until approved | 🔴 Not Started | Sean | |
-| G8-3 | Run against current `asset_metadata` and `column_metadata` — generate drafts for all demo assets | 🔴 Not Started | Sean | Validates approach before production |
+| G8-1 | Build `nb_07_ai_gap_fill.py` — queries `lh_metadata` for rows where `Description IS NULL`, calls `ai_generate_text()` | 🔴 Not Started | Ajay | Fabric-native replacement for `ai_gap_fill.py` in archive |
+| G8-2 | Write drafts with `IsDraft = 1` — do not propagate until approved | 🔴 Not Started | Ajay | |
+| G8-3 | Run against current `asset_metadata` and `column_metadata` — generate drafts for all demo assets | 🔴 Not Started | Ajay | Validates approach before production |
 | G8-4 | Review AI draft quality with Christopher/Ranbir — adjust prompt if needed | 🔴 Not Started | Sean + Christopher | |
 
 ---
@@ -209,10 +209,10 @@ Enercare has hundreds of purpose-built Power BI models with divergent KPI logic.
 
 | # | Task | Status | Owner | Notes |
 |---|---|---|---|---|
-| G9-1 | Build steward review notebook — shows `IsDraft = 1` rows filtered by domain owner | 🔴 Not Started | Sean | Phase 1: notebook-based; Phase 2: Power App |
-| G9-2 | Add approval action: steward sets `IsDraft = 0` for approved rows | 🔴 Not Started | Sean | |
-| G9-3 | Add KPI certification action: business owner sets `IsCertified = 1` with `CertifiedBy` | 🔴 Not Started | Sean | |
-| G9-4 | Add drift alert: if `DefinitionHash` changes on an approved asset, reset `IsDraft = 1` and notify owner | 🔴 Not Started | Sean | |
+| G9-1 | Build steward review notebook — shows `IsDraft = 1` rows filtered by domain owner | 🔴 Not Started | Alison | Phase 1: notebook-based; Phase 2: Power App |
+| G9-2 | Add approval action: steward sets `IsDraft = 0` for approved rows | 🔴 Not Started | Alison | |
+| G9-3 | Add KPI certification action: business owner sets `IsCertified = 1` with `CertifiedBy` | 🔴 Not Started | Alison | |
+| G9-4 | Add drift alert: if `DefinitionHash` changes on an approved asset, reset `IsDraft = 1` and notify owner | 🔴 Not Started | Alison | |
 | G9-5 | Agree on domain ownership matrix with Christopher/Ranbir — who approves what | 🔴 Not Started | Christopher / Ranbir | Business decision |
 
 ---
@@ -228,11 +228,11 @@ Enercare has hundreds of purpose-built Power BI models with divergent KPI logic.
 
 | # | Task | Status | Owner | Notes |
 |---|---|---|---|---|
-| G10-1 | Workshop with Christopher/Ranbir: define entity classes and relationships for Enercare domain | 🔴 Not Started | Sean + Christopher | Business input required |
-| G10-2 | Populate `ontology_classes` and `ontology_relationships` tables from workshop output | 🔴 Not Started | Sean | |
-| G10-3 | Register custom Atlas `EntityDef` types via Purview REST API | 🔴 Not Started | Sean | |
-| G10-4 | Map existing `asset_metadata` rows to ontology classes (`OntologyClass` column) | 🔴 Not Started | Sean | |
-| G10-5 | Update Purview push (G6) to use ontology `typeName` instead of generic `DataSet` | 🔴 Not Started | Sean | |
+| G10-1 | Workshop with Christopher/Ranbir: define entity classes and relationships for Enercare domain | 🔴 Not Started | Alison + Christopher | Business input required |
+| G10-2 | Populate `ontology_classes` and `ontology_relationships` tables from workshop output | 🔴 Not Started | Alison | |
+| G10-3 | Register custom Atlas `EntityDef` types via Purview REST API | 🔴 Not Started | Alison | |
+| G10-4 | Map existing `asset_metadata` rows to ontology classes (`OntologyClass` column) | 🔴 Not Started | Alison | |
+| G10-5 | Update Purview push (G6) to use ontology `typeName` instead of generic `DataSet` | 🔴 Not Started | Alison | |
 
 ---
 
@@ -247,11 +247,11 @@ Enercare has hundreds of purpose-built Power BI models with divergent KPI logic.
 
 | # | Task | Status | Owner | Notes |
 |---|---|---|---|---|
-| G11-1 | Add Microsoft material to IT architecture review deck to support approval | 🔴 Not Started | Naunihal / Jonson | Meeting action item |
+| G11-1 | Add Microsoft material to IT architecture review deck to support approval | 🔴 Not Started | Ajay | Meeting action item |
 | G11-2 | Submit IT architecture review board request | 🔴 Not Started | Christopher / IT | |
-| G11-3 | Design chatbot architecture: Data Agent + AI Search vector DB + Copilot Studio | 🔴 Not Started | Jonson / Naunihal | Can proceed in parallel with G11-1/2 |
-| G11-4 | Investigate Azure AI Search vector DB integration with Standalone Copilot / Data Agent | 🔴 Not Started | Naunihal | Meeting action item |
-| G11-5 | Schedule follow-up session focused on B2C/customer support use case | 🔴 Not Started | Jonson | Meeting action item |
+| G11-3 | Design chatbot architecture: Data Agent + AI Search vector DB + Copilot Studio | 🔴 Not Started | Ajay | Can proceed in parallel with G11-1/2 |
+| G11-4 | Investigate Azure AI Search vector DB integration with Standalone Copilot / Data Agent | 🔴 Not Started | Ajay | Meeting action item |
+| G11-5 | Schedule follow-up session focused on B2C/customer support use case | 🔴 Not Started | Sean | Meeting action item |
 
 ---
 
@@ -259,11 +259,11 @@ Enercare has hundreds of purpose-built Power BI models with divergent KPI logic.
 
 | Action | Owner | Due | Status |
 |---|---|---|---|
-| Share Standalone Copilot tenant settings + enablement steps | Naunihal | ASAP | 🔴 Not Started |
-| Add material to IT architecture review deck for Fabric Data Agent approval | Naunihal / Jonson | ASAP | 🔴 Not Started |
+| Share Standalone Copilot tenant settings + enablement steps | Alison | ASAP | 🔴 Not Started |
+| Add material to IT architecture review deck for Fabric Data Agent approval | Ajay | ASAP | 🔴 Not Started |
 | Provide update on metadata storage alternatives + Purview lineage options | Brian / Sean | End of week (2026-05-08) | 🟡 In Progress — this document |
-| Investigate Azure AI Search vector DB integration guidance | Naunihal | TBD | 🔴 Not Started |
-| Schedule B2C chatbot follow-up session | Jonson | TBD | 🔴 Not Started |
+| Investigate Azure AI Search vector DB integration guidance | Ajay | TBD | 🔴 Not Started |
+| Schedule B2C chatbot follow-up session | Sean | TBD | 🔴 Not Started |
 
 ---
 
