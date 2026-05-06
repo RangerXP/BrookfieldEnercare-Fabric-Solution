@@ -1,477 +1,223 @@
-# Enercare Fabric Governance — Design Gap Analysis & Updated Roadmap
+# Enercare — Metadata Platform Product Gap Analysis
 
 **Date:** 2026-05-05  
-**Inputs:** Original package (Ajay/PG), current `/pbi` build state, customer meeting 2026-05-05  
-**Audience:** Sean Kelley (Microsoft), Brian Lung (Microsoft), Christopher Dingle (VP Data & Analytics, Enercare)
+**Meeting participants:** Christopher Dingle (VP Data & Analytics), Ranbir Singh, Ci Zhu, Brian Lung, Sean Kelley, Naunihal Singh Sidhu, Jonson Tsai, Shaun Callighan  
+**Purpose:** Map Enercare's stated metadata and governance goals to current platform state, identify gaps, and define a prioritized implementation plan using Microsoft Fabric and Microsoft Purview.
 
 ---
 
-## 1. Prioritized Inputs from the 2026-05-05 Customer Meeting
+## 1. Customer Goals (Source: 2026-05-05 Meeting)
 
-The following are ranked by impact on the design, not by meeting order.
+The following goals were explicitly stated or directly implied by Enercare stakeholders.
 
-### Priority 1 — Blockers / Immediate Design Constraints
+### G1 — Standardized Semantic Layer
+Consolidate from hundreds of purpose-built Power BI models to a small number of reusable, certified semantic models. Target: approximately 150 users per shared model. KPI logic must be consistent, centrally defined, and consistently propagated across all consumer surfaces.
 
-**P1-A: SemPy cannot write back to semantic models (Christopher Dingle, confirmed)**
-> "Read: SemPy is designed for reading semantic model metadata… Write operations require XMLA/TOM commands, which SemPy doesn't expose."
+### G2 — Centralized KPI Governance
+Business stakeholders — not the data analytics team — must own KPI definitions. This includes initial sign-off on logic, approval of changes, and control over which workgroups and vendors consume certified definitions. Change tracking is required.
 
-*Design implication:* The TOM/XMLA write-back path Ajay's package assumed (`05_apply_metadata_to_fabric.py`) requires either a Windows VM with `pythonnet` or an alternative mechanism. A Windows VM is "not so elegant." The git-based TMDL update path — already operational in this project — is the preferred alternative. See §4-C.
+### G3 — Copilot and AI Enablement
+Business users should be able to ask questions of their data, generate insights, and build their own reports without depending on analysts. Copilot accuracy is directly dependent on the quality of metadata behind the semantic model: descriptions, naming standards, AI instructions, and verified answers. "Good metadata" is a prerequisite, not a follow-on.
 
-**P1-B: KPI inconsistency is the primary business driver**
-> "Same KPI reported differently across business groups. Updates to logic not consistently propagated."
+### G4 — Metadata-Driven Discoverability
+Developers, analysts, and end users must be able to find data assets and understand their meaning without relying on tribal knowledge. OneLake catalog (Purview Unified Catalog) is the preferred destination. Third-party catalog tools are not desired.
 
-*Design implication:* `kpi_metadata` in `lh_metadata` must become the canonical store. KPI logic must be version-controlled and subject to business sign-off before propagation. The current `kpi_metadata` table has the right schema; it needs a certification/approval flag and a promotion pipeline.
+### G5 — Lineage and Impact Analysis
+When a KPI definition or source table changes, the team needs to know what reports and models are affected. Column-level lineage from source system through to Power BI report is the target.
 
-**P1-C: Metadata sparsity — clean slate**
-> "Very, very naive. Sparse (business terms especially)."
+### G6 — Self-Service Analytics
+Reduce the bottleneck on the central data analytics team. Business users should be able to create their own reports from certified models and query data directly through Copilot or Data Agents.
 
-*Design implication:* AI gap-fill (Ajay's `ai_gap_fill.py`) is not a nice-to-have — it is required to bootstrap the catalog. This moves from Priority 4 in the original plan to Priority 1. The Azure OpenAI dependency should be replaced with Fabric-native AI Functions to avoid external credential management.
+### G7 — Real-Time Operational Analytics
+Move from daily dashboard refresh to near-real-time (15-minute intervals) for operational use cases, particularly the call center.
 
----
-
-### Priority 2 — Near-Term Requirements (Next 2–4 Weeks)
-
-**P2-A: "Prep data for AI" must be applied to the semantic model**
-> "Copilot requires standardized semantic model and good metadata behind it."
-
-The four components of "prep data for AI" are: (1) large model storage enabled, (2) simplified schema, (3) verified answers, (4) AI instructions. Only AI instructions are currently addressed (via the Data Agent). Verified answers and model-level AI instructions on the semantic model are not yet configured.
-
-**P2-B: Standalone Copilot enablement**
-> "Standalone Copilot can restrict to approved models. Desire to avoid exposing all 300 models."
-
-Tenant settings for Standalone Copilot need to be enabled and scoped to the `BrookfieldEnercare` semantic model. This is a Fabric admin task, not a pipeline task, but it is a dependency for demonstrating the full Copilot flow.
-
-**P2-C: Metadata architecture must resolve the "where does it live" question**
-> "We want to build this in the right place… we're in a circular loop."
-
-The meeting explicitly left the canonical metadata store unresolved. The `lh_metadata` OneLake approach (Ajay's design, implemented in our pipeline) is the correct answer. This document needs to be the definitive response to Brian's action item: *"Provide an update on alternatives for storing and managing metadata in Fabric, including options for data lineage and integration with Purview."*
+### G8 — B2C Customer Support Intelligence
+A future chatbot that combines structured data (Power BI / Fabric) with unstructured data (call transcripts, case notes) to answer customer support queries. Blocked pending IT/legal approval for cross-region Fabric Data Agent processing.
 
 ---
 
-### Priority 3 — Medium-Term (1–2 Months)
+## 2. Current State at Enercare
 
-**P3-A: Lineage metadata for impact analysis**
-> "Impact analysis: what breaks when a KPI changes? Hundreds of reports built on separate models."
-
-Purview lineage edges (table → model → report) are needed for impact analysis. Without this, changing a KPI definition has unknown blast radius.
-
-**P3-B: Business glossary with ownership**
-> "Centralized KPI definitions with governance and business sign-off."
-
-Purview business glossary terms need to be created from `kpi_metadata`, with `Owner` and `Steward` mapped to glossary term owners. Change requests route through the approval workflow.
-
-**P3-C: AI metadata domain — verified answers and AI instructions per model**
-> "Verified answers / predefined responses. Semantic understanding (business terms mapped to data)."
-
-This is a new metadata domain not fully addressed by Ajay's original design. The `lh_metadata` schema needs an `ai_metadata` table for verified Q&A pairs and per-model AI instruction blocks.
-
----
-
-### Priority 4 — Longer-Term / Dependent on IT Approval
-
-**P4-A: B2C chatbot (structured + unstructured)**
-> "A chatbot that can answer customer support queries by integrating structured data from Power BI and unstructured data like call transcripts."
-
-Requires Fabric Data Agent + AI Search + Copilot Studio integration. Blocked on IT/legal approval for cross-region data processing in Canada.
-
-**P4-B: Real-time analytics (15-minute refresh)**
-> "Move from daily to near real-time dashboard updates, aiming for 15-minute intervals."
-
-Requires Mirroring or Eventstream. Not a metadata pipeline concern, but the metadata pipeline must capture refresh cadence in `operational_metadata` to support this.
+| Area | Current State |
+|---|---|
+| Power BI models | Hundreds of purpose-built models; KPI logic diverges across dashboards |
+| KPI definitions | Not centrally stored; defined per-model; inconsistently propagated |
+| Metadata | "Very, very naive" (Christopher); sparse; stored informally in views and stored procedures |
+| Metadata repository | None — no structured, queryable catalog |
+| Metadata writeback | SemPy can read semantic model metadata but cannot write; TOM/XMLA required for write-back; Windows VM dependency is impractical |
+| Copilot for Power BI | Enabled; not yet configured with AI instructions, verified answers, or "prep data for AI" |
+| Standalone Copilot | Not yet enabled; tenant settings not configured |
+| Fabric Data Agent | Enabled in principle; blocked on IT/legal approval for cross-region data processing (Canada) |
+| Purview | Available; not integrated with Power BI or Fabric metadata; no lineage registered |
+| Mirroring | Mirroring does not transfer metadata — descriptions from source do not carry through |
+| Documentation | Largely absent; onboarding depends on specific individuals |
 
 ---
 
-## 2. Compare and Contrast
+## 3. Gap Analysis
 
-### What Ajay's Package Designed
+Each gap maps a customer goal to what is currently missing.
 
-A six-phase pipeline from SQL source → OneLake metadata hub → Fabric surfaces → Purview:
+---
 
-| Phase | Description | Script |
+### Gap 1 — No Canonical Metadata Store
+**Goal:** G1, G2, G4  
+**Current state:** Metadata exists informally in SQL views and stored procedures. There is no queryable, structured repository that other systems can read from.  
+**Impact:** KPI definitions cannot be governed, versioned, or propagated. Copilot cannot be grounded on authoritative definitions. Purview cannot be populated automatically.  
+**Required:** A Fabric Lakehouse (`lh_metadata`) with structured Delta tables for asset descriptions, column definitions, KPI definitions, data owners, sensitivity classifications, and AI instructions. All downstream systems read from this single hub.
+
+---
+
+### Gap 2 — No Certified KPI Definition Layer
+**Goal:** G2, G1  
+**Current state:** KPI logic is embedded per-model, inconsistent, and not subject to formal business approval.  
+**Impact:** Business users receive different answers to the same question depending on which dashboard they open. Copilot cannot produce trusted KPI answers.  
+**Required:** A `kpi_metadata` table in `lh_metadata` with KPI name, formula, business description, owner, steward, certification status, and version history. A lightweight approval workflow (IsCertified flag + owner sign-off) gates promotion to production. Certified KPIs propagate to the semantic model as named DAX measures with descriptions.
+
+---
+
+### Gap 3 — No Metadata Write-Back to Semantic Models
+**Goal:** G1, G3  
+**Current state:** SemPy (available in Fabric notebooks) is read-only. TOM/XMLA write-back requires Windows-based libraries — impractical in a Fabric-native environment.  
+**Impact:** Descriptions, AI instructions, and verified answers cannot be automatically applied to the semantic model from the metadata store.  
+**Required:** A git-based TMDL generation pipeline. Because the semantic model is maintained as TMDL source files in a git repository connected to the Fabric workspace, a Fabric notebook can render updated TMDL files from `lh_metadata`, commit them to git, and trigger a Fabric Source Control sync — achieving full write-back with no TOM dependency, no Windows VM, and no external tooling. This is the Fabric-native alternative Christopher asked about.
+
+---
+
+### Gap 4 — Copilot Not Configured for Business Use
+**Goal:** G3, G6  
+**Current state:** Copilot for Power BI is enabled at the tenant level but the semantic model has not been prepared for AI use: no AI instructions, no verified answers, no "prep data for AI" configuration, schema not simplified for Copilot consumption.  
+**Impact:** Copilot produces generic or hallucinated answers. Business users do not trust it. The self-service goal cannot be achieved.  
+**Required:** Four components of "prep data for AI" applied to the certified semantic model: (1) large model storage enabled, (2) schema simplified for Copilot, (3) verified answers added for known high-frequency questions, (4) AI instructions embedded to define business terms, KPI meanings, and response formatting. These are sourced from `lh_metadata` and applied via the TMDL pipeline (Gap 3).
+
+---
+
+### Gap 5 — Standalone Copilot Not Enabled or Governed
+**Goal:** G3, G6  
+**Current state:** Standalone Copilot (cross-model discovery) is not yet enabled. When enabled, it will expose all tenant models unless restricted.  
+**Impact:** Business users cannot query across certified models. When enabled without governance, all 300+ models are exposed, undermining trust and accuracy.  
+**Required:** Tenant admin settings to enable Standalone Copilot scoped to an approved-models security group containing only certified semantic models. Certified model list is maintained in `lh_metadata` (or as a Fabric data catalog tag).
+
+---
+
+### Gap 6 — No Purview Integration (Descriptions, Glossary, Sensitivity)
+**Goal:** G4, G2  
+**Current state:** Purview is available but has no connection to the Fabric metadata pipeline. Asset descriptions, column-level definitions, KPI glossary terms, and sensitivity labels are not registered.  
+**Impact:** Purview search returns bare schema objects with no business context. Data catalog is not usable for discoverability. Governance reporting is absent.  
+**Required:** An automated Purview push pipeline that reads `lh_metadata` and writes: (1) asset and column descriptions to qualified name assets in Purview, (2) KPI definitions as business glossary terms with owner assignment, (3) sensitivity labels from `sensitivity_classification` as MIP label mappings.
+
+---
+
+### Gap 7 — No Lineage Registered in Purview
+**Goal:** G5  
+**Current state:** Purview can scan Fabric and Azure SQL assets and infer table-level lineage from Mirroring. It does not automatically capture: view/stored-proc → table transformations, notebook-driven transformations, or semantic model → report dependencies.  
+**Impact:** Impact analysis is impossible. When a KPI changes, there is no way to enumerate affected reports. Onboarding developers cannot trace a metric back to its source.  
+**Required:** Custom Atlas Process entities registered via the Purview API for each transformation step: SQL view → source table, Fabric notebook → Delta table, Delta table → semantic model column, semantic model measure → Power BI report visual. This gives three-hop column-level lineage in Purview.
+
+---
+
+### Gap 8 — AI Gap-Fill Not Available
+**Goal:** G4, G3  
+**Current state:** Metadata is sparse. There is no automated mechanism to draft descriptions for objects that have none.  
+**Impact:** Bootstrapping the catalog manually for hundreds of assets is impractical. Sparse metadata directly degrades Copilot accuracy.  
+**Required:** A Fabric-native AI gap-fill notebook using `ai_generate_text()` (Fabric Spark SQL) to draft descriptions for undocumented assets and columns. Drafts are written with `IsDraft = 1` and require steward approval before propagating to Purview or the semantic model.
+
+---
+
+### Gap 9 — No Steward Approval Workflow
+**Goal:** G2, G5  
+**Current state:** No mechanism exists for business owners to review and certify KPI definitions, approve AI-generated descriptions, or sign off on metadata changes.  
+**Impact:** Governance is aspirational. Without a certification gate, unchecked or incorrect metadata propagates to Copilot and Purview.  
+**Required:** A lightweight approval surface — initially a Fabric notebook with a filtered view of `IsDraft = 1` rows for each steward. KPI certification requires the designated business owner (`kpi_metadata.Owner`) to promote `IsCertified` from 0 to 1. A Power App interface is the longer-term target.
+
+---
+
+### Gap 10 — No Ontology Layer
+**Goal:** G4, G5  
+**Current state:** Assets are registered in Purview as generic `DataSet` and `Column` types. There is no Enercare-specific entity model.  
+**Impact:** Purview search and lineage does not reflect the business domain. Ontology-driven governance (e.g., "show me all assets related to the Customer domain") is not possible.  
+**Required:** A domain ontology defining Enercare entity classes (Customer, ServiceAccount, Equipment, Contract, ServiceEvent, BillingEvent, Product) and their relationships, registered as custom Atlas `EntityDef` types in Purview. Star schema tables and semantic model measures are mapped to their ontology class, enabling domain-scoped discovery and lineage queries.
+
+---
+
+### Gap 11 — B2C Chatbot (Structured + Unstructured)
+**Goal:** G8  
+**Current state:** Capability exists in Fabric (Data Agent + AI Search + Copilot Studio) but is blocked on IT/legal approval for cross-region data processing.  
+**Impact:** Customer support self-service is not possible until approved.  
+**Required:** IT architecture review board approval for Fabric Data Agent cross-region processing. Technical implementation follows approval: configure Data Agent to access both structured (semantic model) and unstructured (AI Search over call transcripts) sources, integrate with Copilot Studio for M365 Copilot embedding.
+
+---
+
+## 4. Priority Order
+
+| Priority | Gap | Rationale |
 |---|---|---|
-| 0 | `@tag` header convention in SQL views/procs | `00_metadata_header_convention.sql` |
-| 1 | T-SQL extractor → `meta.*` in source DB + Azure OpenAI gap-fill + steward approval | `02_extract_from_modules.sql`, `ai_gap_fill.py` |
-| 2 | JDBC replication → `lh_metadata` Delta (MERGE + SHA-256 hash, Delta time travel) | `03_replicate_meta_to_onelake.py` |
-| 3 | Fabric Mirroring for zero-ETL data landing | (portal config) |
-| 4 | Apply to Fabric: Delta comments + Warehouse XP + TOM push to semantic model | `05_apply_metadata_to_fabric.py` |
-| 5 | Purview: descriptions + glossary + sensitivity + custom lineage edges | `06_purview_push_descriptions.py`, `07_purview_register_lineage.py` |
-| 6 | AI consumers: Copilot for PBI, Data Agents grounded on `lh_metadata`, Purview Q&A | — |
-
-The original design did **not** include: star schema, TMDL semantic model, Power BI report, Data Agent with custom instructions, git-managed PBIP project, or an AI metadata domain.
-
-### What We Have Built
-
-| Component | Status | Gap vs. Original |
-|---|---|---|
-| `@tag` header convention | Done | None |
-| Python metadata extractor (nb_02) | Done — demo mode | Needs JDBC to real SQL; currently inline Python |
-| `lh_metadata` — `asset_metadata`, `column_metadata`, `kpi_metadata` | Done | Missing: `ai_metadata`, `sensitivity_classification`, `data_owners`, `lineage_edges` tables |
-| `lh_metadata.vw_business_metadata_current` | Done | Needs AI metadata columns added |
-| Star schema (`dim_*`, `fct_*`) | Done — **not in original** | New capability |
-| Direct Lake semantic model (TMDL, 11 relationships, 12 measures) | Done — **not in original** | New capability |
-| Power BI report | Done — **not in original** | New capability |
-| Governance Data Agent | Done — **not in original** | New capability |
-| Delta column comments | Dry run only | Need to activate |
-| TOM/XMLA push to semantic model | Not implemented | Replace with TMDL git-update pipeline (see §4-C) |
-| Purview push — descriptions | Dry run only | Need SP credentials + activation |
-| Purview push — Fabric qualified names | Not started | Need to add `fabric_lakehouse_table_column` push |
-| Purview lineage | Not started | nb_05 needed |
-| AI gap-fill | Not adapted | Rewrite for Fabric-native AI Functions |
-| Steward approval workflow | Not started | `IsDraft` flag exists; no UI |
-| Drift detection | Not started | `DefinitionHash` column exists; no comparison job |
-| Ontology model | Not started | New work; required for Purview custom types |
-| Verified answers / AI instructions on semantic model | Not started | New metadata domain from meeting |
-| Sensitivity classifications | Not started | `@sensitivity` tag parsed; not applied as MIP label |
-| Fabric Mirroring | Not started | nb_01 uses inline Python data |
-
-### Net Assessment
-
-The current build is **ahead of Ajay's original on the analytics layer** (star schema + semantic model + Data Agent) and **behind on the governance propagation layer** (Purview push, lineage, TOM write-back). The meeting adds a new domain — **AI metadata** (verified answers, AI instructions, "prep data for AI") — that neither the original design nor the current build fully addresses.
+| 1 | Gap 1 — Canonical metadata store | Everything else depends on it |
+| 2 | Gap 2 — Certified KPI definitions | Primary business driver stated in meeting |
+| 3 | Gap 3 — Metadata write-back (TMDL pipeline) | Unblocks Copilot configuration and Purview descriptions |
+| 4 | Gap 4 — Copilot "prep data for AI" | Direct path to Copilot accuracy and business adoption |
+| 5 | Gap 8 — AI gap-fill | Required to bootstrap sparse metadata at scale |
+| 6 | Gap 6 — Purview descriptions + glossary | Delivers discoverability; depends on Gap 1 |
+| 7 | Gap 5 — Standalone Copilot governance | Admin task; unblocks self-service at scale |
+| 8 | Gap 9 — Steward approval workflow | Required before production metadata propagates |
+| 9 | Gap 7 — Purview lineage | Impact analysis; depends on Purview integration (Gap 6) |
+| 10 | Gap 10 — Ontology | Longer-term; domain model to be defined with business |
+| 11 | Gap 11 — B2C chatbot | Blocked on IT/legal; technical design can proceed in parallel |
 
 ---
 
-## 3. Updated Architecture
+## 5. Implementation Approach
 
-The revised architecture incorporates four changes from the meeting:
+The implementation uses the existing Fabric workspace (`lh_metadata`, `lh_enercare_demo`, semantic model, Data Agent) as the foundation and extends it across six phases.
 
-1. **Git-based TMDL update replaces TOM/XMLA** for semantic model metadata write-back
-2. **AI metadata domain** added as a first-class layer in `lh_metadata`
-3. **Copilot 3-tier model** (User → Data Agent → Semantic Model → Verified Answer) is the AI consumer architecture
-4. **Standalone Copilot governance** (curated model list, tenant settings) added as a control plane
+### Phase 1 — Canonical Metadata Store (Gaps 1, 2)
+Build or extend `lh_metadata` with the full schema:
+- `asset_metadata` — asset descriptions, owner, steward, sensitivity, domain
+- `column_metadata` — column descriptions, IsDraft flag
+- `kpi_metadata` — formula, unit, owner, `IsCertified`, version, `PreviousFormula`
+- `ai_metadata` — verified answers, AI instructions per model, term mappings
+- `data_owners` — ownership registry by domain
+- `sensitivity_classification` — sensitivity label mappings
+- `lineage_edges` — transformation graph (source → target)
+- `ontology_classes` / `ontology_relationships` — domain entity model
+- `vw_business_metadata_current` — wide view, single read interface for all consumers
 
-```
-                    ┌──────────────────────────────────────────────┐
-                    │  SOURCE (Azure SQL DB / Fabric Lakehouse)     │
-                    │                                              │
-                    │  Views + stored procs with @tag headers      │
-                    │  OR sidecar YAML (DBAs who prefer clean SQL) │
-                    └────────────────────┬─────────────────────────┘
-                                         │
-                              nb_01: Extract metadata
-                              (Python parser, @tag → structured rows)
-                                         │
-                                         ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│  lh_metadata  —  CANONICAL METADATA HUB (OneLake)                     │
-│                                                                        │
-│  asset_metadata        ← business name, description, owner, steward   │
-│  column_metadata       ← column descriptions, sensitivity             │
-│  kpi_metadata          ← KPI formula, unit, owner, IsCertified        │
-│  ai_metadata    [NEW]  ← verified answers, AI instructions per model  │
-│  ontology_classes [NEW]← entity types, class hierarchy                │
-│  ontology_relationships [NEW] ← entity-to-entity relationships        │
-│  lineage_edges  [NEW]  ← source → lakehouse → model → report edges    │
-│  data_owners           ← owner + steward per domain                   │
-│  sensitivity_class     ← MIP label mappings                           │
-│                                                                        │
-│  vw_business_metadata_current  ← wide view, all consumers read here   │
-└──────────┬──────────────────────┬────────────────────────────┬─────────┘
-           │                      │                            │
-     ┌─────▼──────┐        ┌──────▼──────┐           ┌────────▼────────┐
-     │  Phase 4a  │        │  Phase 4b   │           │   Phase 4c      │
-     │  Delta     │        │  TMDL Git   │           │   Purview Push  │
-     │  column    │        │  update     │           │   (Phase 5)     │
-     │  comments  │        │  pipeline   │           │                 │
-     └─────┬──────┘        └──────┬──────┘           └────────┬────────┘
-           │                      │                            │
-           ▼                      ▼                            ▼
-   lh_enercare_demo      /pbi TMDL files             Microsoft Purview
-   Delta tables with     in git → Fabric             - Asset descriptions
-   column COMMENTs       Source Control              - Glossary terms
-   (Copilot for          Update syncs to             - Sensitivity labels
-    Data Engineering)    semantic model              - Lineage edges
-                         (no TOM needed)
-                                │
-                         ┌──────▼───────────────────────────────┐
-                         │  BrookfieldEnercare Semantic Model   │
-                         │  (Direct Lake, TMDL)                 │
-                         │                                      │
-                         │  Tables: dim_*, fct_*                │
-                         │  Measures: 12 DAX (+ KPI-driven new) │
-                         │  Descriptions: from lh_metadata      │
-                         │  AI instructions: from ai_metadata   │
-                         │  Verified answers: from ai_metadata  │
-                         └──────────────┬───────────────────────┘
-                                        │
-               ┌────────────────────────┼───────────────────────┐
-               ▼                        ▼                       ▼
-     ┌──────────────────┐   ┌───────────────────────┐  ┌──────────────┐
-     │  Power BI Report │   │  Governance Data Agent│  │  Standalone  │
-     │  (Copilot for    │   │  (lh_metadata +       │  │  Copilot     │
-     │   Power BI)      │   │   star schema)        │  │  (curated    │
-     │                  │   │                       │  │  model list) │
-     └──────────────────┘   └───────────────────────┘  └──────────────┘
-                                        │
-                            ┌───────────▼───────────┐
-                            │  3-Tier Copilot Model  │
-                            │  User Question         │
-                            │    ↓                   │
-                            │  Data Agent            │
-                            │    ↓                   │
-                            │  Semantic Model        │
-                            │    ↓                   │
-                            │  Verified Answer       │
-                            └───────────────────────┘
-```
+Populate from existing `@tag` headers in SQL views/stored procedures via the extraction notebook. Run AI gap-fill to bootstrap sparse assets (Gap 8, Phase 2).
 
-### Key Architecture Decision: Git-Based TMDL as the Semantic Model Write Path
+### Phase 2 — AI Gap-Fill + Steward Workflow (Gaps 8, 9)
+Deploy Fabric-native AI gap-fill using `ai_generate_text()`. Draft descriptions are written with `IsDraft = 1`. A steward review notebook surfaces pending approvals by domain owner. Certified rows (`IsDraft = 0`, `IsCertified = 1` for KPIs) are the only rows that propagate downstream.
 
-Christopher's follow-up email confirmed the TOM/XMLA constraint. The git-managed TMDL files in `/pbi/BrookfieldEnercare.SemanticModel/definition/tables/` are already how the semantic model is maintained in this project. The write-back pipeline becomes:
+### Phase 3 — Semantic Model Metadata Write-Back (Gap 3, 4)
+Build `nb_04_generate_tmdl.py`. This notebook reads `vw_business_metadata_current` and `ai_metadata`, renders TMDL table files with descriptions and AI instructions, and commits them to the git repository. The Fabric workspace Source Control sync applies the changes to the live semantic model. No TOM, no Windows VM. This resolves the write-back constraint raised in the meeting.
 
-```
-lh_metadata.vw_business_metadata_current
-    → nb_04_generate_tmdl.py (Python: reads metadata, renders TMDL templates)
-    → git push to enercare branch
-    → Fabric Source Control Update (auto-sync or API-triggered)
-    → Semantic model descriptions updated — no TOM, no Windows VM
-```
+Apply "prep data for AI" settings to the `BrookfieldEnercare` semantic model: large model storage, schema simplification, verified answers from `ai_metadata`, AI instructions from `ai_metadata`.
 
-This is the answer to Brian's action item and Christopher's question about "more friendly Fabric Python notebook alternatives."
+### Phase 4 — Purview Integration (Gaps 6, 5)
+Build `nb_05_purview_push.py` to push from `lh_metadata` to Purview:
+- Column and asset descriptions to qualified name assets
+- KPI definitions as business glossary terms with certified owner assignment
+- Sensitivity labels as MIP mappings
+
+Enable and scope Standalone Copilot in tenant settings to the certified model security group.
+
+### Phase 5 — Lineage Registration (Gap 7)
+Build `nb_06_purview_lineage.py` to register custom Atlas Process entities for each transformation step: SQL view → source table, notebook → Delta table, Delta table → semantic model column, semantic model → report visual. Delivers three-hop column-level lineage.
+
+### Phase 6 — Ontology + B2C (Gaps 10, 11)
+Define Enercare domain entity classes with business stakeholders. Register as Atlas custom `EntityDef` types. Map existing catalog assets to ontology classes in the Purview push pipeline.
+
+In parallel: support IT/legal approval process for cross-region Fabric Data Agent. Design B2C chatbot architecture (Data Agent + AI Search + Copilot Studio) once approval is secured.
 
 ---
 
-## 4. Gap-Closing Steps (Revised and Expanded)
+## 6. Answer to Meeting Action Items
 
-Steps are sequenced to deliver value incrementally, with the current `/pbi` build as the starting point.
+### "Provide an update on alternatives for storing and managing metadata in Fabric, including options for data lineage and integration with Purview." (Brian Lung / Sean Kelley — due end of week)
 
----
+**Recommended approach:** `lh_metadata` in OneLake is the canonical store. Metadata is authored once — via structured `@tag` headers in SQL views or sidecar YAML files — extracted by a Fabric PySpark notebook, and stored in Delta tables. All consumers (Copilot, Data Agents, Purview, semantic model) read from `lh_metadata.vw_business_metadata_current`. This avoids mirroring metadata through SQL (mirroring does not transfer descriptions), avoids third-party tools, and keeps everything within the Fabric/Purview boundary.
 
-### Phase A — Activate Existing Code (1–2 weeks)
+For **data lineage**: custom Atlas Process entities registered via the Purview REST API (pyapacheatlas library) model each transformation step as a first-class lineage node. Fabric's native scan captures table-level lineage from Mirroring; the custom registration layer adds view/proc → table and semantic model → report edges that Fabric cannot infer automatically.
 
-**A1: Apply Delta column comments to `lh_enercare_demo` tables**
+### "More friendly Fabric Python notebook alternatives to TOM for metadata write-back?" (Christopher Dingle)
 
-The DDL is already generated by `nb_02_metadata_pipeline_demo`. Flip `DEMO_MODE = False` for the column comment block. Confirms the pipeline end-to-end before tackling Purview.
-
-**A2: Wire Purview service principal + push asset descriptions**
-
-Register an app in Entra ID → grant `Data Curator` on the Purview account → store credentials in Fabric Notebook environment variables. Set `DEMO_MODE = False` for the Purview push block. The Atlas payloads (mssql qualified names) are already built in nb_02.
-
-**A3: Extend Purview push to Fabric Lakehouse qualified names**
-
-Add a second pass in the Purview push block for `fabric_lakehouse_table_column` qualifiedNames covering the star schema tables. Template:
-```
-fabric://<workspace-id>/lh_enercare_demo/<table>/<column>
-```
-
-**A4: Enable "Prep data for AI" on the BrookfieldEnercare semantic model**
-
-In Fabric: open the semantic model → Settings → Q&A → enable large model storage. Add AI instructions to the model using the Data Agent `stage_config.json` pattern (same format, applied to the semantic model). Source the instructions from `lh_metadata.ai_metadata` once that table exists.
-
----
-
-### Phase B — Extend `lh_metadata` Schema (2–3 weeks)
-
-**B1: Add `ai_metadata` table**
-
-New table to store verified Q&A pairs and per-model AI instruction blocks — the AI metadata domain identified in the meeting:
-
-```
-ai_metadata (
-    AiMetadataId    INT,
-    AssetId         INT,          -- FK to asset_metadata
-    MetadataType    STRING,       -- 'ai_instruction' | 'verified_answer' | 'term_mapping'
-    QuestionPattern STRING,       -- for verified_answer: the trigger question
-    Answer          STRING,       -- for verified_answer: the authoritative response
-    Instruction     STRING,       -- for ai_instruction: the instruction text
-    IsCertified     INT,          -- 1 = business-signed-off, 0 = draft
-    Owner           STRING,
-    LastUpdatedUtc  STRING
-)
-```
-
-Populate from existing Data Agent `stage_config.json` AI instructions as the seed. This table becomes the source of truth for AI instructions across all models.
-
-**B2: Add `kpi_metadata.IsCertified` flag and version columns**
-
-Meeting explicitly requires "business sign-off on KPI definitions and updates." Extend existing `kpi_metadata` with:
-- `IsCertified` INT — 1 = approved by business owner, 0 = draft
-- `CertifiedBy` STRING
-- `CertifiedDate` STRING
-- `Version` INT — increment on each change
-- `PreviousFormula` STRING — for rollback/audit
-
-**B3: Add `lineage_edges` table**
-
-Needed for Purview lineage registration and impact analysis:
-
-```
-lineage_edges (
-    EdgeId          INT,
-    SourceQName     STRING,   -- Purview qualifiedName of upstream asset
-    TargetQName     STRING,   -- Purview qualifiedName of downstream asset
-    ProcessType     STRING,   -- 'mirroring' | 'notebook' | 'dataflow' | 'direct_lake'
-    ProcessName     STRING,   -- e.g. 'nb_03_pbi_star_schema'
-    LastRegistered  STRING
-)
-```
-
-**B4: Add `ontology_classes` and `ontology_relationships` tables**
-
-```
-ontology_classes (
-    ClassId         INT,
-    ClassName       STRING,   -- e.g. 'Customer', 'ServiceAccount', 'Equipment'
-    Description     STRING,
-    FabricTable     STRING,   -- e.g. 'dim_customer'
-    PurviewTypeName STRING    -- Atlas EntityDef typeName
-)
-
-ontology_relationships (
-    RelId           INT,
-    FromClassId     INT,
-    ToClassId       INT,
-    RelationshipType STRING,  -- e.g. 'has', 'subscribes_to', 'owns'
-    Cardinality     STRING    -- '1:N', 'N:1', 'N:N'
-)
-```
-
-Seed with: Customer → has → ServiceAccount → has → Equipment; Customer → has → Contract → has → BillingEvent; ServiceAccount → generates → ServiceEvent.
-
----
-
-### Phase C — TMDL Pipeline (Replaces TOM/XMLA) (3–4 weeks)
-
-**C1: Build `nb_04_generate_tmdl.py`**
-
-This is the answer to Christopher's TOM question. A Fabric PySpark notebook that:
-
-1. Reads `lh_metadata.vw_business_metadata_current` + `ai_metadata`
-2. For each table in the semantic model, renders a TMDL file using Python string templates
-3. Injects descriptions into `column` blocks and `measure` blocks
-4. Injects AI instructions from `ai_metadata` into the model-level `linguisticMetadata` block
-5. Writes the rendered `.tmdl` files to a `/pbi/BrookfieldEnercare.SemanticModel/definition/tables/` path via the Fabric Lakehouse Files API or directly via OneLake DFS
-6. Triggers a git commit via the Fabric Git API (or documents the manual Source Control → Update step)
-
-This pipeline turns the TMDL files from hand-maintained artifacts into generated outputs — metadata-driven, no TOM, no Windows VM.
-
-**C2: Add verified answers to the semantic model**
-
-Fabric's "prep data for AI" supports a `verifiedAnswers` JSON block per semantic model. Populate from `ai_metadata WHERE MetadataType = 'verified_answer'` using the TMDL pipeline above.
-
----
-
-### Phase D — Purview Lineage + Glossary (4–6 weeks)
-
-**D1: Build `nb_05_purview_lineage.py`**
-
-Adapt `07_purview_register_lineage.py` for the Fabric model. Register three lineage edges per asset using Atlas Process entities:
-
-- `nb_01` (Process) → lh_enercare_demo source tables (output)
-- `nb_03` (Process) → star schema dim/fct tables (output), source tables (input)
-- Direct Lake connection (Process) → semantic model columns (output), star schema tables (input)
-
-This gives Purview end-to-end column-level lineage from source SQL → OneLake → semantic model.
-
-**D2: Create Purview business glossary from `kpi_metadata`**
-
-For each `kpi_metadata` row with `IsCertified = 1`, create a Purview glossary term using the `pyapacheatlas` `GlossaryClient`. Map `Owner` to `contacts.Expert` and `Steward` to `contacts.Owner`. Assign terms to the corresponding `powerbi_dataset_measure` assets.
-
----
-
-### Phase E — Ontology + Custom Purview Types (6–10 weeks)
-
-**E1: Register custom Atlas `EntityDef` types**
-
-Use the Purview Atlas API to register the entity types defined in `ontology_classes` as custom `EntityDef` entries. This makes Enercare-domain entities (`Customer`, `ServiceAccount`, `Equipment`, etc.) first-class types in the Purview catalog instead of generic `DataSet`.
-
-**E2: Map assets to ontology classes**
-
-Update the Purview push (Phase A2/A3) to use the `OntologyClass → PurviewTypeName` mapping. Lakehouse tables are registered under their domain type, not `mssql_table`.
-
-**E3: Cross-ontology lineage**
-
-Extend `lineage_edges` to capture ontology-class-level lineage (e.g., `Customer` entity is sourced from `customers` table, exposed in `dim_customer`, and surfaced via `dim_customer` in the semantic model).
-
----
-
-### Phase F — Production Hardening (Parallel / Ongoing)
-
-**F1: Replace nb_01 inline data with Fabric Mirroring**
-
-Configure a Mirrored Azure SQL Database item pointing at the real Enercare source DB. Replace nb_01's inline Python lists with shortcuts to Mirrored Delta tables in `lh_enercare_demo`. All downstream notebooks (nb_02, nb_03) are unchanged.
-
-**F2: AI gap-fill using Fabric-native AI Functions**
-
-Replace `ai_gap_fill.py`'s external Azure OpenAI call with Fabric Spark SQL's `ai_generate_text()` function (no external credentials):
-
-```python
-spark.sql("""
-    UPDATE lh_metadata.asset_metadata
-    SET Description = ai_generate_text(
-        CONCAT('Write a 2-sentence business description for a SQL view named ', ObjectName,
-               ' in an energy services company. Output only the description text.'),
-        named_struct('modelId', 'gpt-4o-mini')
-    ),
-    IsDraft = 1
-    WHERE Description IS NULL AND IsDraft = 0
-""")
-```
-
-**F3: Drift detection nightly job**
-
-After each nb_02 run, compare `DefinitionHash` against the previous run. Where hash changed and `IsDraft = 0`, set `IsDraft = 1` (re-review required). Emit a summary to the Data Agent so stewards can ask "what metadata changed this week?"
-
-**F4: Standalone Copilot enablement**
-
-Fabric admin task: enable Standalone Copilot in tenant settings, scope to the `BrookfieldEnercare` semantic model and approved security group. Share Naunihal's enablement documentation with Christopher's team (follow-up action from meeting).
-
-**F5: IT/legal approval for Fabric Data Agent cross-region**
-
-Support Christopher/Naunihal in preparing the IT architecture review board deck. The cross-region data processing constraint is a legal/compliance matter specific to Canada; the technical architecture is unaffected.
-
----
-
-## 5. Revised Roadmap Summary
-
-```
-PHASE A — Activate (Weeks 1–2)
-  A1  Delta column comments live
-  A2  Purview SP credentials + asset description push
-  A3  Extend push to Fabric Lakehouse qualified names
-  A4  "Prep data for AI" on BrookfieldEnercare semantic model
-
-PHASE B — Extend lh_metadata Schema (Weeks 2–3)
-  B1  ai_metadata table (verified answers + AI instructions)
-  B2  kpi_metadata: IsCertified + version columns
-  B3  lineage_edges table
-  B4  ontology_classes + ontology_relationships tables
-
-PHASE C — TMDL Pipeline / Semantic Model Write-Back (Weeks 3–4)
-  C1  nb_04_generate_tmdl.py — metadata → TMDL files → git → Fabric sync
-  C2  Verified answers injected into semantic model via TMDL
-
-PHASE D — Purview Lineage + Glossary (Weeks 4–6)
-  D1  nb_05_purview_lineage.py — Atlas Process entities, 3-tier lineage
-  D2  Purview business glossary from kpi_metadata
-
-PHASE E — Ontology (Weeks 6–10)
-  E1  Register custom Atlas EntityDef types
-  E2  Map assets to ontology classes in Purview push
-  E3  Cross-ontology lineage
-
-PHASE F — Production Hardening (Parallel / Ongoing)
-  F1  Fabric Mirroring replaces inline data
-  F2  AI gap-fill via Fabric-native ai_generate_text()
-  F3  Drift detection nightly job
-  F4  Standalone Copilot enablement (admin task)
-  F5  IT/legal approval for Fabric Data Agent cross-region
-```
-
----
-
-## 6. Response to Meeting Action Items
-
-### Brian / Sean action item: *"Provide an update on alternatives for storing and managing metadata in Fabric, including options for data lineage and integration with Purview, by end of week."*
-
-**Answer:** `lh_metadata` (OneLake Delta) is the canonical store. All consumers — Copilot, Data Agents, Purview, TMDL pipeline — read from `lh_metadata.vw_business_metadata_current`. Metadata is authored once (via `@tag` headers in SQL or sidecar YAML), extracted by a Fabric notebook, and propagated in four directions:
-
-1. **Delta column comments** on Lakehouse tables (Copilot for Data Engineering)
-2. **TMDL git update pipeline** → semantic model descriptions + AI instructions (no TOM required)
-3. **Purview Atlas push** → asset descriptions + glossary + sensitivity + lineage edges
-4. **Data Agent grounding** → `lh_metadata` tables queried directly by the Governance Agent
-
-For data lineage specifically: custom Atlas `Process` entities are registered via `pyapacheatlas` (nb_05). This covers source SQL view → Lakehouse table → semantic model column — three hops of column-level lineage in Purview.
-
-### Christopher's question: *"More friendly Fabric Python notebook alternatives to TOM?"*
-
-**Answer:** Yes. The git-managed TMDL files in `/pbi/BrookfieldEnercare.SemanticModel/definition/tables/` are the semantic model's source of truth in this project. `nb_04_generate_tmdl.py` will read `lh_metadata`, render updated TMDL files with descriptions and AI instructions, commit to the `enercare` git branch, and trigger a Fabric Source Control sync. No Windows VM, no TOM, no `pythonnet`. The trade-off vs TOM is that changes go through git (seconds to minutes) rather than in-memory (milliseconds) — acceptable for a metadata propagation pipeline that runs on a schedule.
+**Answer:** The semantic model in this project is maintained as TMDL source files in a git repository connected to the Fabric workspace via Source Control. A Fabric PySpark notebook (`nb_04_generate_tmdl.py`) reads `lh_metadata`, renders updated TMDL files with descriptions, AI instructions, and verified answers, and commits them to the repository. The Fabric workspace Source Control sync applies the changes to the live model. This is fully Fabric-native, requires no TOM, no `pythonnet`, and no Windows VM. The only trade-off vs. direct TOM is propagation latency (seconds via git vs. milliseconds in-memory) — acceptable for a scheduled metadata pipeline.
