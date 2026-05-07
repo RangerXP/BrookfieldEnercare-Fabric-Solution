@@ -1,0 +1,27 @@
+{
+  "servers": {
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "gallery": true,
+      "description": "GitHub MCP server — gives Copilot read/write access to issues, PRs, branches, and repo contents"
+    },
+    "azure": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@azure/mcp@latest", "server", "start"],
+      "description": "Azure MCP server — Copilot can query Azure resources, Key Vault, and Resource Manager",
+      "env": {
+        "AZURE_TENANT_ID": "${env:AZURE_TENANT_ID}",
+        "AZURE_CLIENT_ID": "${env:AZURE_CLIENT_ID}"
+      }
+    },
+    "filesystem": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "${workspaceFolder}"],
+      "description": "Filesystem MCP — Copilot can read/write local files in the workspace"
+    }
+  },
+  "_comment": "To enable: VS Code → Settings → GitHub Copilot → MCP Servers. Authenticate GitHub and Azure before running prompts."
+}
