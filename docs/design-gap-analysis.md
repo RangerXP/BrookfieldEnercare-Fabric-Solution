@@ -18,6 +18,7 @@
 |---|---|---|---|---|
 | G1 | Canonical metadata store | P1 | 🟡 In Progress | Sean |
 | G2 | Certified KPI definitions | P1 | 🟡 In Progress | Sean |
+| CC | Call center data layer | P1 | 🟢 Done | Sean |
 | G3 | Metadata write-back to semantic model | P1 | 🔴 Not Started | Ajay |
 | G4 | Copilot "prep data for AI" | P2 | 🔴 Not Started | Sean |
 | G5 | Standalone Copilot governance | P2 | ⏸ Blocked | Alison |

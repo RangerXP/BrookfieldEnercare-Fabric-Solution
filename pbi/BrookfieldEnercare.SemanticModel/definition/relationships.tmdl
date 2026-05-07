@@ -43,3 +43,15 @@ relationship dim_service_account_CustomerKey_dim_customer_CustomerKey
 	fromColumn: dim_service_account.CustomerKey
 	toColumn: dim_customer.CustomerKey
 
+relationship fct_cc_interactions_interaction_date_key_dim_date_DateKey
+	fromColumn: fct_cc_interactions.interaction_date_key
+	toColumn: dim_date.DateKey
+
+relationship fct_cc_interactions_agent_id_dim_cc_agent_agent_id
+	fromColumn: fct_cc_interactions.agent_id
+	toColumn: dim_cc_agent.agent_id
+
+relationship fct_cc_interactions_customer_id_dim_customer_CustomerKey
+	fromColumn: fct_cc_interactions.customer_id
+	toColumn: dim_customer.CustomerKey
+

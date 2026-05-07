@@ -619,3 +619,456 @@ print("\nSetup complete.  Run nb_02_metadata_pipeline_demo.py next.")
 # META   "language": "python",
 # META   "language_group": "synapse_pyspark"
 # META }
+
+# CELL ********************
+
+# =============================================================================
+# CALL CENTER EXTENSION — cc_agents (15 rows)
+# =============================================================================
+from pyspark.sql.types import *
+from datetime import date
+
+cc_agents_schema = StructType([
+    StructField("agent_id",   IntegerType(), False),
+    StructField("agent_name", StringType(),  False),
+    StructField("team",       StringType(),  False),
+    StructField("hire_date",  DateType(),    False),
+])
+
+cc_agents_data = [
+    (1,  "Sarah Bouchard",    "billing",       date(2019, 3, 15)),
+    (2,  "James Whitfield",   "billing",       date(2020, 7, 22)),
+    (3,  "Priya Nair",        "billing",       date(2021, 1, 10)),
+    (4,  "Michael Osei",      "billing",       date(2018, 11, 5)),
+    (5,  "Tracey Henderson",  "pp_retentions", date(2019, 6, 14)),
+    (6,  "Andre Lafleur",     "pp_retentions", date(2022, 2, 28)),
+    (7,  "Kavita Rajan",      "pp_retentions", date(2020, 9, 17)),
+    (8,  "David Kowalski",    "hvac_coord",    date(2021, 4, 12)),
+    (9,  "Maria Santos",      "hvac_coord",    date(2019, 8, 3)),
+    (10, "Thomas Bergeron",   "hvac_coord",    date(2022, 5, 20)),
+    (11, "Lisa Nakamura",     "new_sales",     date(2020, 12, 1)),
+    (12, "Raj Mehta",         "new_sales",     date(2021, 7, 8)),
+    (13, "Patricia Sinclair", "new_sales",     date(2019, 10, 25)),
+    (14, "Omar Farouk",       "emergency",     date(2022, 1, 15)),
+    (15, "Nicole Tremblay",   "emergency",     date(2020, 3, 9)),
+]
+
+df_cc_agents = spark.createDataFrame(cc_agents_data, schema=cc_agents_schema)
+df_cc_agents.write.format("delta").mode("overwrite").saveAsTable(f"{DEMO_LAKEHOUSE}.cc_agents")
+print(f"  cc_agents: {df_cc_agents.count()} rows written")
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# CELL ********************
+
+# =============================================================================
+# CALL CENTER EXTENSION — ref_cc_billing_adj_category (12 rows)
+# =============================================================================
+from pyspark.sql.types import *
+
+# DEMO NOTE: This table mirrors dbo.ref_cc_billing_adjustment_category_new
+# in Enercare's actual Azure SQL estate — currently ORPHANED there (no mappings,
+# no descriptions). We recreate it here to demonstrate the governance gap.
+
+ref_adj_schema = StructType([
+    StructField("category_code", StringType(), False),
+    StructField("category_desc", StringType(), False),
+    StructField("adj_type",      StringType(), False),
+])
+
+ref_adj_data = [
+    ("LATE_FEE_WAIVER",      "Late payment fee waived as courtesy",              "waiver"),
+    ("DOUBLE_CHARGE_CREDIT", "Credit for duplicate billing charge",               "credit"),
+    ("PLAN_PRICE_ADJ",       "Protection plan price adjustment",                  "credit"),
+    ("SERVICE_CREDIT",       "Credit for incomplete or missed service visit",     "credit"),
+    ("TAX_CORRECTION",       "Tax calculation correction applied",                "credit"),
+    ("PAYMENT_REVERSAL",     "Reversed payment reapplied to account",             "charge"),
+    ("GOODWILL_CREDIT",      "Goodwill gesture for customer experience issue",    "credit"),
+    ("BILLING_ERROR_ADJ",    "Billing system error correction",                   "credit"),
+    ("CONTRACT_DISPUTE_CR",  "Credit applied after contract dispute resolution",  "credit"),
+    ("DIRECT_DEBIT_FAIL",    "Failed direct debit reprocessing fee",              "charge"),
+    ("PROMO_ADJ",            "Promotional pricing adjustment",                    "credit"),
+    ("OTHER",                "Miscellaneous billing adjustment",                  "waiver"),
+]
+
+df_ref_adj = spark.createDataFrame(ref_adj_data, schema=ref_adj_schema)
+df_ref_adj.write.format("delta").mode("overwrite").saveAsTable(f"{DEMO_LAKEHOUSE}.ref_cc_billing_adj_category")
+print(f"  ref_cc_billing_adj_category: {df_ref_adj.count()} rows written  [ORPHANED demo asset]")
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# CELL ********************
+
+# =============================================================================
+# CALL CENTER EXTENSION — fct_cc_interactions (300 rows with demo correlation)
+# Demo correlation: 14 customers who called billing in Jan-Feb 2026 are assigned
+# a pp_renewal call within 30 days. 6/14 decline renewal → 57% acceptance rate
+# (vs 76% for non-billing callers) — this is the 19pp gap Copilot surfaces.
+# =============================================================================
+import random
+from datetime import date, timedelta
+from pyspark.sql.types import *
+
+random.seed(42)
+
+Q_START    = date(2025, 10, 1)
+Q_END      = date(2026, 3, 31)
+DAYS_TOTAL = (Q_END - Q_START).days + 1  # 182
+
+AGENT_BY_QUEUE = {
+    "billing":       [1, 2, 3, 4],
+    "pp_renewal":    [5, 6, 7, 8],
+    "hvac_service":  [8, 9, 10],
+    "emergency":     [14, 15],
+    "new_pp_sales":  [11, 12, 13],
+    "ecobee_support":[8, 9, 10],
+    "general":       [1, 2, 3, 4],
+}
+
+FCR_RATES = {
+    "billing": 0.61, "pp_renewal": 0.74, "hvac_service": 0.70,
+    "emergency": 0.81, "new_pp_sales": 0.88, "ecobee_support": 0.79, "general": 0.83,
+}
+ESC_RATES = {
+    "billing": 0.14, "pp_renewal": 0.08, "hvac_service": 0.11,
+    "emergency": 0.19, "new_pp_sales": 0.04, "ecobee_support": 0.06, "general": 0.05,
+}
+HANDLE_TIMES = {
+    "billing": (440, 95), "pp_renewal": (510, 120), "hvac_service": (380, 80),
+    "emergency": (295, 65), "new_pp_sales": (550, 130), "ecobee_support": (360, 70), "general": (280, 60),
+}
+CSAT_PARAMS = {
+    "fcr_resolved": (4.2, 0.6), "escalated": (2.1, 0.7),
+    "pp_renewed": (4.0, 0.5), "pp_declined": (2.4, 0.8), "general_resolved": (3.8, 0.7),
+}
+BILLING_ADJ_POOL = [
+    "LATE_FEE_WAIVER", "DOUBLE_CHARGE_CREDIT", "PLAN_PRICE_ADJ", "SERVICE_CREDIT",
+    "GOODWILL_CREDIT", "BILLING_ERROR_ADJ", None, None, None, None,
+]
+DISPOSITIONS = {
+    "billing":       ["billing_resolved", "billing_escalated", "credit_applied", "callback_scheduled"],
+    "pp_renewal":    ["plan_renewed", "plan_cancelled", "callback_scheduled", "transfer_to_retentions"],
+    "hvac_service":  ["appointment_scheduled", "sr_updated", "escalated_to_dispatch", "resolved_by_phone"],
+    "emergency":     ["emergency_dispatch", "resolved_by_phone", "escalated"],
+    "new_pp_sales":  ["plan_sold", "callback_scheduled", "no_interest"],
+    "ecobee_support":["issue_resolved", "escalated", "warranty_claim"],
+    "general":       ["resolved", "transferred", "callback_scheduled"],
+}
+
+# 14 correlation customers: billing call in Jan-Feb 2026 → pp_renewal within 30 days
+# 6/14 decline renewal → 57% acceptance rate
+CORR_CUSTOMERS = list(range(1, 15))   # customer_ids 1-14
+CORR_DECLINES  = {1, 2, 3, 4, 5, 6}  # 6 of 14 decline
+
+
+def _csat(q, pp_out, fcr, esc):
+    if random.random() >= 0.22:
+        return None
+    if pp_out == "accepted":
+        key = "pp_renewed"
+    elif pp_out == "declined":
+        key = "pp_declined"
+    elif esc:
+        key = "escalated"
+    elif fcr:
+        key = "fcr_resolved"
+    else:
+        key = "general_resolved"
+    mu, sig = CSAT_PARAMS[key]
+    return round(min(5.0, max(1.0, random.gauss(mu, sig))), 1)
+
+
+def _make_row(iid, cust_id, q, idate, pp_out, is_corr_billing):
+    agents = AGENT_BY_QUEUE[q]
+    agent  = agents[iid % len(agents)]
+    ht     = max(120, int(random.gauss(*HANDLE_TIMES[q])))
+    hold   = random.randint(20, 180)
+    fcr    = 1 if random.random() < FCR_RATES[q] else 0
+    esc    = 1 if random.random() < ESC_RATES[q] else 0
+    csat   = _csat(q, pp_out, fcr, esc)
+    b_adj  = random.choice(BILLING_ADJ_POOL) if q == "billing" else None
+    disp   = random.choice(DISPOSITIONS[q])
+    chan   = random.choices(
+        ["inbound_voice", "callback", "chat"], weights=[78, 14, 8])[0]
+    date_key = int(idate.strftime("%Y%m%d"))
+    return (iid, cust_id, agent, None, q, chan, idate, ht, hold, csat,
+            fcr, esc, pp_out, b_adj, disp, date_key, is_corr_billing)
+
+
+interactions_raw = []
+iid = 1
+
+# Correlation pairs: billing call then pp_renewal within 30 days
+corr_billing_dates = {}
+for idx, cust_id in enumerate(CORR_CUSTOMERS):
+    bdate = date(2026, 1, 4) + timedelta(days=idx * 2)  # Jan 4 – Feb 1
+    interactions_raw.append(_make_row(iid, cust_id, "billing", bdate, "not_applicable", True))
+    corr_billing_dates[cust_id] = bdate
+    iid += 1
+
+for idx, cust_id in enumerate(CORR_CUSTOMERS):
+    pdate  = corr_billing_dates[cust_id] + timedelta(days=15 + idx % 12)
+    pp_out = "declined" if cust_id in CORR_DECLINES else "accepted"
+    interactions_raw.append(_make_row(iid, cust_id, "pp_renewal", pdate, pp_out, False))
+    iid += 1
+
+# Remaining 272 interactions filling the queue distribution (300 - 28 corr = 272)
+remaining_queues = (
+    ["billing"]        * 79 +
+    ["pp_renewal"]     * 58 +
+    ["hvac_service"]   * 54 +
+    ["emergency"]      * 27 +
+    ["new_pp_sales"]   * 33 +
+    ["ecobee_support"] * 12 +
+    ["general"]        * 9
+)  # 79+58+54+27+33+12+9 = 272
+random.shuffle(remaining_queues)
+
+for seq, q in enumerate(remaining_queues):
+    cust_id = (seq % 50) + 1
+    idate   = Q_START + timedelta(days=random.randint(0, DAYS_TOTAL - 1))
+    if q == "pp_renewal":
+        pp_out = random.choices(
+            ["declined", "accepted", "callback"], weights=[22, 68, 10])[0]
+    else:
+        pp_out = "not_applicable"
+    interactions_raw.append(_make_row(iid, cust_id, q, idate, pp_out, False))
+    iid += 1
+
+cc_int_schema = StructType([
+    StructField("interaction_id",       IntegerType(), False),
+    StructField("customer_id",          IntegerType(), False),
+    StructField("agent_id",             IntegerType(), False),
+    StructField("service_account_id",   IntegerType(), True),
+    StructField("queue_type",           StringType(),  False),
+    StructField("channel",              StringType(),  False),
+    StructField("interaction_date",     DateType(),    False),
+    StructField("handle_time_sec",      IntegerType(), False),
+    StructField("hold_time_sec",        IntegerType(), False),
+    StructField("csat_score",           DoubleType(),  True),
+    StructField("fcr_flag",             IntegerType(), False),
+    StructField("escalated_flag",       IntegerType(), False),
+    StructField("pp_renewal_outcome",   StringType(),  True),
+    StructField("billing_adj_category", StringType(),  True),
+    StructField("disposition_code",     StringType(),  False),
+    StructField("interaction_date_key", IntegerType(), False),
+])
+
+int_data = [row[:16] for row in interactions_raw]  # drop is_corr_billing flag
+df_cc_int = spark.createDataFrame(int_data, schema=cc_int_schema)
+df_cc_int.write.format("delta").mode("overwrite").saveAsTable(f"{DEMO_LAKEHOUSE}.fct_cc_interactions")
+print(f"  fct_cc_interactions: {df_cc_int.count()} rows written")
+
+# Validate demo correlation
+_corr_csv = ",".join(str(c) for c in CORR_CUSTOMERS)
+_check = spark.sql(f"""
+    SELECT SUM(CASE WHEN pp_renewal_outcome = 'accepted' THEN 1 ELSE 0 END) * 1.0
+           / NULLIF(COUNT(*), 0) AS renewal_rate
+    FROM {DEMO_LAKEHOUSE}.fct_cc_interactions
+    WHERE queue_type = 'pp_renewal'
+      AND interaction_date BETWEEN '2026-01-01' AND '2026-03-31'
+      AND customer_id IN ({_corr_csv})
+""").first()
+_rate = float(_check.renewal_rate) if _check.renewal_rate else 0.0
+print(f"Demo correlation check: PP renewal rate (billing callers Q1): {_rate:.1%}  [target: ~57%]")
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# CELL ********************
+
+# =============================================================================
+# CALL CENTER EXTENSION — fct_cc_transcript_turns (~12 turns/interaction)
+# Billing calls for correlation customers include billing-confusion phrases
+# so the Data Agent can surface the root cause of PP renewal decline.
+# =============================================================================
+BILLING_CUST = [
+    "I don't understand why my bill went up this month",
+    "I'm seeing two charges and I only have one plan",
+    "My protection plan price changed and nobody told me",
+    "Can you credit my account for the service that wasn't completed",
+    "I want to dispute this charge on my invoice",
+    "The invoice date doesn't match when I signed up",
+    "I've been overcharged for three months in a row",
+    "Why did Zuora send me two invoices?",
+    "I thought I was on the monthly plan but this looks annual",
+]
+BILLING_CONFUSION = [
+    "I have some billing confusion about the charges on my account",
+    "I'm looking at this invoice and I'm being charged twice it seems",
+    "There's a billing confusion here — can you explain why I was charged twice?",
+    "This invoice does not match what I agreed to pay",
+    "I'm confused about this invoice — the amounts just don't add up",
+]
+BILLING_AGENT = [
+    "I can see your account has a billing cycle change from last month",
+    "Let me apply a one-time credit to your account",
+    "I'll escalate this to our billing specialist team",
+    "I can confirm the charge is correct because your plan renewed on that date",
+    "I'm waiving the late fee as a one-time courtesy",
+]
+PP_RENEWAL_CUST = [
+    "I got a renewal notice but I'm thinking about cancelling",
+    "What does my protection plan actually cover this year",
+    "Is there a discount if I renew for two years",
+    "I'm moving next month, can I transfer the plan to the new address",
+    "I've had three repairs this year and I'm not sure it's worth it",
+    "The price went up fifteen percent, why?",
+    "My neighbor has the same plan and pays less",
+]
+HVAC_CUST = [
+    "My furnace stopped working and I need someone today",
+    "I've been waiting three weeks for my annual maintenance",
+    "The technician came but the problem still isn't fixed",
+    "I need to reschedule my maintenance appointment",
+    "What's the status of my service request number",
+    "It's minus twenty outside and my heat isn't working",
+]
+EMERGENCY_CUST = [
+    "My hot water heater is leaking right now",
+    "No heat in the middle of winter, this is an emergency",
+    "Water is coming out of the furnace",
+    "Carbon monoxide alarm is going off near my furnace",
+    "I smell gas near my water heater",
+]
+GENERIC_CUST = [
+    "I'd like to get more information about a protection plan",
+    "My ecobee thermostat isn't connecting to the app",
+    "I have a general question about my account",
+    "I'd like to schedule a service for my equipment",
+    "Can you check the status of my account?",
+]
+GENERIC_AGENT = [
+    "Thank you for calling Enercare, how can I help you today?",
+    "I'd be happy to look into that for you",
+    "Let me pull up your account details",
+    "I can see your account and I'm reviewing your history now",
+    "Is there anything else I can help you with today?",
+    "I've updated your account with the changes we discussed",
+    "You'll receive an email confirmation within 24 hours",
+]
+CUST_PHRASES = {
+    "billing": BILLING_CUST, "pp_renewal": PP_RENEWAL_CUST,
+    "hvac_service": HVAC_CUST, "emergency": EMERGENCY_CUST,
+    "new_pp_sales": GENERIC_CUST, "ecobee_support": GENERIC_CUST, "general": GENERIC_CUST,
+}
+AGENT_PHRASES = {
+    "billing": BILLING_AGENT,
+}
+INTENT_DIST = {
+    "billing":      ["billing_dispute", "payment_question", "invoice_inquiry", "general"],
+    "pp_renewal":   ["pp_cancel_intent", "renewal_inquiry", "price_negotiation", "transfer_request"],
+    "hvac_service": ["hvac_complaint", "scheduling_request", "status_inquiry", "general"],
+    "emergency":    ["hvac_complaint", "emergency_dispatch", "general"],
+}
+
+corr_billing_iids = {row[0] for row in interactions_raw if row[16]}
+
+transcript_rows = []
+turn_id = 1
+
+for int_row in interactions_raw:
+    int_id  = int_row[0]
+    queue   = int_row[4]
+    fcr     = int_row[10]
+    esc     = int_row[11]
+    is_corr = int_row[16]
+
+    n_turns       = random.randint(6, 18)
+    added_conf    = False
+    cust_pool     = CUST_PHRASES.get(queue, GENERIC_CUST)
+    agent_pool    = AGENT_PHRASES.get(queue, GENERIC_AGENT)
+
+    for t in range(1, n_turns + 1):
+        speaker = "customer" if t % 2 == 1 else "agent"
+
+        if speaker == "customer":
+            if is_corr and not added_conf and t >= 3:
+                text = random.choice(BILLING_CONFUSION)
+                added_conf = True
+            else:
+                text = random.choice(cust_pool)
+        else:
+            text = random.choice(agent_pool)
+
+        progress = t / n_turns
+        if esc:
+            sent = random.gauss(-0.15 - progress * 0.5, 0.2)
+        elif fcr:
+            sent = random.gauss(progress * 0.45, 0.2)
+        else:
+            sent = random.gauss(-0.05, 0.2)
+        sent = round(max(-1.0, min(1.0, sent)), 3)
+
+        intent = None
+        if speaker == "customer" and queue in INTENT_DIST:
+            intent = random.choice(INTENT_DIST[queue])
+
+        transcript_rows.append((turn_id, int_id, t, speaker, text, sent, intent))
+        turn_id += 1
+
+    if is_corr and not added_conf:
+        transcript_rows.append((
+            turn_id, int_id, n_turns + 1, "customer",
+            random.choice(BILLING_CONFUSION), -0.3, "billing_dispute",
+        ))
+        turn_id += 1
+
+turn_schema = StructType([
+    StructField("turn_id",        IntegerType(), False),
+    StructField("interaction_id", IntegerType(), False),
+    StructField("turn_seq",       IntegerType(), False),
+    StructField("speaker",        StringType(),  False),
+    StructField("utterance_text", StringType(),  False),
+    StructField("sentiment_score",DoubleType(),  False),
+    StructField("intent_label",   StringType(),  True),
+])
+
+df_turns = spark.createDataFrame(transcript_rows, schema=turn_schema)
+df_turns.write.format("delta").mode("overwrite").saveAsTable(f"{DEMO_LAKEHOUSE}.fct_cc_transcript_turns")
+print(f"  fct_cc_transcript_turns: {df_turns.count()} rows written")
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# CELL ********************
+
+# =============================================================================
+# CALL CENTER EXTENSION — Summary
+# =============================================================================
+print("\nCall center tables written:")
+for tbl, note in [
+    ("cc_agents",                    ""),
+    ("ref_cc_billing_adj_category",  "  [ORPHANED demo asset]"),
+    ("fct_cc_interactions",          ""),
+    ("fct_cc_transcript_turns",      ""),
+]:
+    n = spark.table(f"{DEMO_LAKEHOUSE}.{tbl}").count()
+    print(f"  {tbl:<35} {n:>6} rows{note}")
+
+print("\nAll tables ready. Run nb_02_metadata_pipeline_demo.py next.")
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }

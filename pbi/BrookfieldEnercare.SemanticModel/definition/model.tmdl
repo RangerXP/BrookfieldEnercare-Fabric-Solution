@@ -10,7 +10,7 @@ annotation PBI_QueryOrder = ["DirectLake - lh_enercare_demo"]
 
 annotation __PBI_TimeIntelligenceEnabled = 1
 
-annotation PBI_ProTooling = ["DirectLakeOnOneLakeInWeb"]
+annotation PBI_ProTooling = ["DirectLakeOnOneLakeInWeb","TMDL-Extension"]
 
 ref table _Measures
 ref table dim_date

@@ -364,6 +364,74 @@ print("\nStar schema ready.")
 
 # CELL ********************
 
+# Call center dimensions — CC extension
+# dim_cc_agent: agent registry for call center agents
+spark.sql(f"""
+CREATE OR REPLACE TABLE {DEMO_LAKEHOUSE}.dim_cc_agent AS
+SELECT
+    agent_id,
+    agent_name,
+    team,
+    hire_date
+FROM {DEMO_LAKEHOUSE}.cc_agents
+""")
+print(f"dim_cc_agent:          {spark.table(f'{DEMO_LAKEHOUSE}.dim_cc_agent').count()} rows")
+
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# CELL ********************
+
+# dim_cc_billing_adj: billing adjustment category reference
+spark.sql(f"""
+CREATE OR REPLACE TABLE {DEMO_LAKEHOUSE}.dim_cc_billing_adj AS
+SELECT
+    category_code,
+    category_desc,
+    adj_type
+FROM {DEMO_LAKEHOUSE}.ref_cc_billing_adj_category
+""")
+print(f"dim_cc_billing_adj:    {spark.table(f'{DEMO_LAKEHOUSE}.dim_cc_billing_adj').count()} rows")
+
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# CELL ********************
+
+print("\n=== Call center layer row counts ===")
+cc_dims  = ["dim_cc_agent", "dim_cc_billing_adj"]
+cc_facts = ["fct_cc_interactions", "fct_cc_transcript_turns"]
+
+print("  CC Dimensions:")
+for t in cc_dims:
+    print(f"    {t:<30} {spark.table(f'{DEMO_LAKEHOUSE}.{t}').count():>6} rows")
+
+print("  CC Facts:")
+for t in cc_facts:
+    print(f"    {t:<30} {spark.table(f'{DEMO_LAKEHOUSE}.{t}').count():>6} rows")
+
+print("\nCall center extension ready.")
+
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# CELL ********************
+
 spark.catalog.clearCache()
 print("Session cache cleared.")
 

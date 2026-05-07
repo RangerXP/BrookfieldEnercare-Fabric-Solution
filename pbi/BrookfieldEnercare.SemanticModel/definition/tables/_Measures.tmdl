@@ -37,6 +37,26 @@ table _Measures
 	measure 'Avg Equipment Age Years' = AVERAGEX(dim_equipment, dim_equipment[AgeYears])
 		formatString: #,0.0
 
+	measure 'FCR Rate' = DIVIDE(CALCULATE(COUNTROWS(fct_cc_interactions), fct_cc_interactions[fcr_flag] = 1), COUNTROWS(fct_cc_interactions))
+		description: "First Contact Resolution: % of interactions resolved without callback in 5 business days. Target: 78%."
+		formatString: 0.0%
+
+	measure 'Avg CSAT' = AVERAGEX(FILTER(fct_cc_interactions, NOT ISBLANK(fct_cc_interactions[csat_score])), fct_cc_interactions[csat_score])
+		description: "Average post-call IVR satisfaction score (1–5). Excludes NULL responses (~78% non-response rate). Target: 4.2."
+		formatString: #,0.0
+
+	measure 'PP Renewal Rate' = DIVIDE(CALCULATE(COUNTROWS(fct_cc_interactions), fct_cc_interactions[pp_renewal_outcome] = "accepted"), CALCULATE(COUNTROWS(fct_cc_interactions), fct_cc_interactions[queue_type] = "pp_renewal"))
+		description: "Protection Plan renewal acceptance rate on renewal queue calls. Target: 82%."
+		formatString: 0.0%
+
+	measure 'Avg Handle Time (sec)' = AVERAGE(fct_cc_interactions[handle_time_sec] + fct_cc_interactions[hold_time_sec])
+		description: "Average total handle time in seconds (talk + hold). Billing queue target: 420s."
+		formatString: #,0
+
+	measure 'Escalation Rate' = DIVIDE(CALCULATE(COUNTROWS(fct_cc_interactions), fct_cc_interactions[escalated_flag] = 1), COUNTROWS(fct_cc_interactions))
+		description: "Percentage of interactions escalated to supervisor or specialist queue."
+		formatString: 0.0%
+
 	partition _Measures = calculated
 		mode: import
 		source = ""
