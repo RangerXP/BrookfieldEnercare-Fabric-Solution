@@ -24,15 +24,7 @@ Microsoft SE: Sean Kelley. Repo owner: RangerXP/BrookfieldEnercare-Fabric-Soluti
 ├── docs/
 │   └── design-gap-analysis.md    ← AUTHORITATIVE build backlog (11 gaps, owners, statuses)
 │
-├── metadata/                      ← Fabric item definitions synced from workspace
-│   ├── lh_enercare_demo.Lakehouse/
-│   ├── lh_metadata.Lakehouse/
-│   ├── Enercare Governance Agent.DataAgent/
-│   ├── nb_01_setup_demo_environment.Notebook/
-│   ├── nb_02_metadata_pipeline_demo.Notebook/
-│   └── nb_03_pbi_star_schema.Notebook/
-│
-├── pbi/                           ← Fabric Source Control export (Power BI items)
+├── pbi/                           ← Fabric Source Control git sync folder (ALL Fabric items live here)
 │   ├── BrookfieldEnercare.pbip
 │   ├── BrookfieldEnercare.Report/
 │   ├── BrookfieldEnercare.SemanticModel/
@@ -57,7 +49,8 @@ Microsoft SE: Sean Kelley. Repo owner: RangerXP/BrookfieldEnercare-Fabric-Soluti
 │   ├── lh_metadata.Lakehouse/
 │   ├── nb_01_setup_demo_environment.Notebook/
 │   ├── nb_02_metadata_pipeline_demo.Notebook/
-│   └── nb_03_pbi_star_schema.Notebook/
+│   ├── nb_03_pbi_star_schema.Notebook/
+│   └── nb_04a_extend_metadata_schema.Notebook/
 │
 ├── purview/                       ← Purview scripts (currently empty — build here)
 ├── sql/                           ← SQL scripts (currently empty — build here)
@@ -66,8 +59,9 @@ Microsoft SE: Sean Kelley. Repo owner: RangerXP/BrookfieldEnercare-Fabric-Soluti
 └── README.md
 ```
 
-**New notebooks go in `demo/fabric/` as `nb_0N_name.py` (cell-by-cell Python source).**
+**New Fabric notebooks go in `pbi/` as `nb_0N_name.Notebook/` (with `.platform` + `notebook-content.py`).**
 **New Purview scripts go in `purview/` as `nb_0N_name.py`.**
+**`demo/fabric/` holds Python source mirrors of notebooks — not the Fabric sync target.**
 **New SQL scripts go in `sql/`.**
 
 ---
