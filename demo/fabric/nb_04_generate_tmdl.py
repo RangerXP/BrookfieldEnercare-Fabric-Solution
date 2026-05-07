@@ -206,30 +206,20 @@ for path in TABLE_PARTS:
 
 
 # ---------------------------------------------------------------------------
-# CELL 6 — Inject KPI descriptions into _Measures.tmdl (IsCertified=1 gate)
+# CELL 6 — KPI descriptions — lh_metadata gate only
+# NOTE: TMDL does not support 'description' on measure objects in the current
+# Fabric API version. KPI descriptions are stored in lh_metadata.kpi_metadata
+# and surfaced via vw_business_metadata_current / Data Agent. The IsCertified=1
+# gate governs Purview glossary (G6) and verified answers (G4) propagation.
 # ---------------------------------------------------------------------------
 
-measures_path = "definition/tables/_Measures.tmdl"
-content       = tmdl_files[measures_path]
-kpi_changes   = []
-
+kpi_changes = []
+print(f"  [INFO] {len(kpi_descs)} certified KPI(s) in lh_metadata:")
 for kpi_name, desc in kpi_descs.items():
-    if f"measure '{kpi_name}'" in content:
-        content = inject_measure_description(content, kpi_name, desc)
-        kpi_changes.append(kpi_name)
-    else:
-        print(f"  WARNING: KPI '{kpi_name}' not found in _Measures.tmdl — skipped")
-
-if DEMO_MODE:
-    tag = "[DRY RUN]"
-else:
-    tmdl_files[measures_path] = content
-    tag = "[APPLIED]"
-
-print(f"  {tag} _Measures.tmdl: {len(kpi_changes)} certified KPI description(s)")
-if kpi_changes:
-    for k in kpi_changes:
-        print(f"    • {k}")
+    kpi_changes.append(kpi_name)
+    print(f"    • {kpi_name}: {desc[:80]}{'...' if len(desc) > 80 else ''}")
+print("  Measure descriptions are stored in lh_metadata only (TMDL measure "
+      "description property not supported in current Fabric version).")
 
 
 # ---------------------------------------------------------------------------
