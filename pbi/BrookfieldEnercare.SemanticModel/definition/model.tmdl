@@ -21,4 +21,7 @@ ref table dim_product
 ref table fct_service_request
 ref table fct_billing
 ref table fct_contract_month
+ref table dim_cc_agent
+ref table dim_cc_billing_adj
+ref table fct_cc_interactions
 
