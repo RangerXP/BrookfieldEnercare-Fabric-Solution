@@ -8,14 +8,9 @@
 # META   },
 # META   "dependencies": {
 # META     "lakehouse": {
-# META       "default_lakehouse": "d4ba455b-9b80-46dd-afe8-d0b877b3a5d2",
+# META       "default_lakehouse": "77b3a5d2-d0b8-afe8-46dd-9b80d4ba455b",
 # META       "default_lakehouse_name": "lh_metadata",
-# META       "default_lakehouse_workspace_id": "795ce5db-7ea0-4a7c-ba64-e27c9fb568f4",
-# META       "known_lakehouses": [
-# META         {
-# META           "id": "d4ba455b-9b80-46dd-afe8-d0b877b3a5d2"
-# META         }
-# META       ]
+# META       "default_lakehouse_workspace_id": "795ce5db-7ea0-4a7c-ba64-e27c9fb568f4"
 # META     }
 # META   }
 # META }
