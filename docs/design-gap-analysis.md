@@ -42,7 +42,7 @@ Enercare has hundreds of purpose-built Power BI models with divergent KPI logic.
 
 **Priority:** P1 — everything downstream depends on this  
 **Goal:** Single queryable hub (`lh_metadata` in OneLake) feeding Copilot, Purview, Data Agents, and the semantic model. Metadata is authored once and propagated everywhere.  
-**Status:** 🟡 In Progress — `lh_metadata` exists with 3 tables; schema needs extension
+**Status:** 🟡 In Progress — schema extended; G1-6, G1-8, G1-10 remain
 
 ### Tasks
 
@@ -50,13 +50,13 @@ Enercare has hundreds of purpose-built Power BI models with divergent KPI logic.
 |---|---|---|---|---|
 | G1-1 | `asset_metadata` table — verify schema covers all required fields (owner, steward, domain, sensitivity, IsDraft, DefinitionHash) | 🟢 Done | Sean | Exists in current build |
 | G1-2 | `column_metadata` table — verify schema | 🟢 Done | Sean | Exists in current build |
-| G1-3 | `kpi_metadata` table — add `IsCertified`, `Version`, `PreviousFormula`, `CertifiedBy`, `CertifiedDate` columns | 🔴 Not Started | Sean | Currently missing certification fields |
-| G1-4 | `ai_metadata` table — new; stores verified answers, AI instructions, term mappings per model | 🔴 Not Started | Sean | New domain identified in meeting |
-| G1-5 | `data_owners` table — owner + steward registry per domain | 🔴 Not Started | Sean | |
+| G1-3 | `kpi_metadata` table — add `IsCertified`, `Version`, `PreviousFormula`, `CertifiedBy`, `CertifiedDate` columns | 🟢 Done | Sean | nb_04a Cell 2 — ALTER TABLE adds 10 columns |
+| G1-4 | `ai_metadata` table — new; stores verified answers, AI instructions, term mappings per model | 🟢 Done | Sean | nb_04a Cell 3 — CREATE TABLE + seeded 13 verified answers + 3 AI instructions |
+| G1-5 | `data_owners` table — owner + steward registry per domain | 🟢 Done | Sean | nb_04a Cell 4 — CREATE TABLE |
 | G1-6 | `sensitivity_classification` table — sensitivity label mappings | 🔴 Not Started | Sean | |
-| G1-7 | `lineage_edges` table — source → target transformation graph | 🔴 Not Started | Sean | Prerequisite for G7 |
+| G1-7 | `lineage_edges` table — source → target transformation graph | 🟢 Done | Sean | nb_04a Cell 5 — CREATE TABLE; populate via G7 |
 | G1-8 | `ontology_classes` + `ontology_relationships` tables | 🔴 Not Started | Sean + Christopher | Prerequisite for G10 |
-| G1-9 | Extend `vw_business_metadata_current` to include new tables | 🔴 Not Started | Sean | After G1-3 through G1-8 complete |
+| G1-9 | Extend `vw_business_metadata_current` to include new tables | 🟢 Done | Sean | nb_04a Cell 10 — UNION ALL with ai_metadata + SourceTable discriminator |
 | G1-10 | Update nb_02 extractor to populate new table columns | 🔴 Not Started | Sean | After schema changes done |
 
 ---
@@ -65,14 +65,14 @@ Enercare has hundreds of purpose-built Power BI models with divergent KPI logic.
 
 **Priority:** P1 — primary business driver stated in meeting  
 **Goal:** Business stakeholders own and certify KPI definitions. Logic is version-controlled. Changes require approval before propagating to the semantic model or Purview.  
-**Status:** 🟡 In Progress — `kpi_metadata` table exists; certification workflow missing
+**Status:** 🟡 In Progress — schema extended; `IsCertified = 1` propagation gate (G2-4) and version logic (G2-5) remain
 
 ### Tasks
 
 | # | Task | Status | Owner | Notes |
 |---|---|---|---|---|
-| G2-1 | Add `IsCertified`, `Version`, `PreviousFormula`, `CertifiedBy`, `CertifiedDate` to `kpi_metadata` (see G1-3) | 🔴 Not Started | Sean | |
-| G2-2 | Seed `kpi_metadata` with existing 12 DAX measures from BrookfieldEnercare semantic model | 🔴 Not Started | Sean | Starting point for business review |
+| G2-1 | Add `IsCertified`, `Version`, `PreviousFormula`, `CertifiedBy`, `CertifiedDate` to `kpi_metadata` (see G1-3) | 🟢 Done | Sean | nb_04a Cell 2 — 10 columns added via ALTER TABLE |
+| G2-2 | Seed `kpi_metadata` with existing 12 DAX measures from BrookfieldEnercare semantic model | 🟢 Done | Sean | nb_04a Cells 6–7 — 12 existing measures (IsCertified=0) + 5 CC KPIs (IsCertified=1) |
 | G2-3 | Define KPI ownership — agree with Christopher/Ranbir on which business owner certifies each domain's KPIs | 🔴 Not Started | Christopher / Ranbir | Business decision |
 | G2-4 | Propagation rule: only `IsCertified = 1` KPIs promoted to semantic model and Purview glossary | 🔴 Not Started | Sean | Gate in nb_04 and nb_05 |
 | G2-5 | Version increment logic: when KPI formula changes, capture old formula in `PreviousFormula`, bump `Version`, reset `IsCertified = 0` | 🔴 Not Started | Sean | Triggers re-certification |
