@@ -1,7 +1,6 @@
 table dim_cc_billing_adj
 	lineageTag: 7a3f1e20-cc03-4d8b-9fa2-a30000000001
 	sourceLineageTag: [dbo].[dim_cc_billing_adj]
-	description: "Billing adjustment category reference. Maps agent-applied adjustment codes to business descriptions and type classifications. In production this is an orphaned lookup table in Clarify — centralized here as part of the metadata layer."
 
 	column category_code
 		dataType: string

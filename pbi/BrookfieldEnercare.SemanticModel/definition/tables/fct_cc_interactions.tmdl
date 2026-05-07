@@ -96,7 +96,6 @@ table fct_cc_interactions
 		sourceLineageTag: csat_score
 		summarizeBy: sum
 		sourceColumn: csat_score
-		description: "Post-call IVR satisfaction score 1–5. NULL for ~78% of interactions (non-respondents). Scores vary by outcome: FCR-resolved avg 4.2, escalated avg 2.1."
 
 		annotation SummarizationSetBy = Automatic
 
@@ -109,7 +108,6 @@ table fct_cc_interactions
 		sourceLineageTag: fcr_flag
 		summarizeBy: sum
 		sourceColumn: fcr_flag
-		description: "1 = interaction resolved on first contact (no callback within 5 business days). 0 = not resolved on first contact."
 
 		annotation SummarizationSetBy = Automatic
 
@@ -129,7 +127,6 @@ table fct_cc_interactions
 		sourceLineageTag: pp_renewal_outcome
 		summarizeBy: none
 		sourceColumn: pp_renewal_outcome
-		description: "Protection Plan renewal call outcome: accepted, declined, or not_applicable (non-renewal queues). Demo: customers with prior billing confusion calls show 57% acceptance vs 76% baseline."
 
 		annotation SummarizationSetBy = Automatic
 
@@ -139,7 +136,6 @@ table fct_cc_interactions
 		sourceLineageTag: billing_adj_category
 		summarizeBy: none
 		sourceColumn: billing_adj_category
-		description: "Billing adjustment category applied during the interaction. NULL for non-billing queues. Links to dim_cc_billing_adj."
 
 		annotation SummarizationSetBy = Automatic
 
