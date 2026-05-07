@@ -36,6 +36,13 @@ MODEL_NAME         = "BrookfieldEnercare"
 
 print(f"nb_04a | DEMO_MODE={DEMO_MODE} | lakehouse={METADATA_LAKEHOUSE}")
 
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
 # CELL ********************
 
 # G1-3, G2-1 — Extend kpi_metadata: add certification + call-center columns
@@ -64,6 +71,13 @@ else:
     spark.sql(sql_alter_kpi)
     print("kpi_metadata extended: 10 columns added")
 
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
 # CELL ********************
 
 # G1-4 — Create ai_metadata table
@@ -91,6 +105,13 @@ else:
     spark.sql(sql_create_ai_metadata)
     print("ai_metadata table created")
 
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
 # CELL ********************
 
 # G1-5 — Create data_owners table
@@ -115,6 +136,13 @@ else:
     spark.sql(sql_create_data_owners)
     print("data_owners table created")
 
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
 # CELL ********************
 
 # G1-7 — Create lineage_edges table
@@ -138,6 +166,13 @@ if DEMO_MODE:
 else:
     spark.sql(sql_create_lineage)
     print("lineage_edges table created")
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
 
 # CELL ********************
 
@@ -213,6 +248,13 @@ else:
                 .saveAsTable(f"{METADATA_LAKEHOUSE}.kpi_metadata")
         print(f"kpi_metadata seeded: {len(rows_set_a)} existing DAX measures")
 
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
 # CELL ********************
 
 # G2-2 Set B — Seed kpi_metadata with 5 certified call center KPIs
@@ -272,6 +314,13 @@ else:
     df_set_b.write.format("delta").mode("append").option("mergeSchema", "true") \
             .saveAsTable(f"{METADATA_LAKEHOUSE}.kpi_metadata")
     print(f"kpi_metadata seeded: {len(rows_set_b)} certified call center KPIs")
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
 
 # CELL ********************
 
@@ -344,6 +393,13 @@ else:
          .saveAsTable(f"{METADATA_LAKEHOUSE}.ai_metadata")
     print(f"ai_metadata seeded: {len(rows_va)} verified answers")
 
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
 # CELL ********************
 
 # G1-4, G4 — Seed ai_metadata: model-level AI instruction rows
@@ -393,6 +449,13 @@ else:
     df_instr.write.format("delta").mode("append").option("mergeSchema", "true") \
             .saveAsTable(f"{METADATA_LAKEHOUSE}.ai_metadata")
     print(f"ai_metadata seeded: {len(rows_instr)} AI instruction rows")
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
 
 # CELL ********************
 
@@ -496,6 +559,13 @@ else:
     print("vw_business_metadata_current rebuilt:")
     counts.show()
 
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
 # CELL ********************
 
 # Summary
@@ -530,3 +600,10 @@ lh_metadata schema extension complete
 
 Gaps closed: G1-3 ✓  G1-4 ✓  G1-5 ✓  G1-7 ✓  G2-1 ✓  G2-2 ✓  G1-9 ✓
 """)
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
