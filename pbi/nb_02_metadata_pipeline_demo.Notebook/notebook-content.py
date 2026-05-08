@@ -59,7 +59,7 @@ META_LAKEHOUSE   = "lh_metadata"        # metadata hub (same as README Phase 2)
 # PURVIEW_SECRET     = dbutils.secrets.get(scope="enercare-kv", key="purview-sp-secret")
 
 # Demo mode — no live connections
-DEMO_MODE  = True   # set False when swapping in production SQL + Purview creds
+DEMO_MODE  = False   # set False when swapping in production SQL + Purview creds
 SOURCE_DB  = "enercare_demo"  # used in Purview qualified names
 
 print(f"DEMO_MODE          : {DEMO_MODE}")
