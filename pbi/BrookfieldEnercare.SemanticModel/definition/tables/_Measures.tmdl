@@ -1,5 +1,5 @@
 table _Measures
-	isHidden: true
+	isHidden
 
 	measure 'Total MRR' = CALCULATE(SUM(fct_billing[Amount]), fct_billing[TransactionType] = "MonthlyCharge", fct_billing[Status] = "Posted")
 		formatString: \$#,0.00
