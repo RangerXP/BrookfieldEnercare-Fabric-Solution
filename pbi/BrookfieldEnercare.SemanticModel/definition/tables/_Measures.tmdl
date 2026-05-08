@@ -46,7 +46,7 @@ table _Measures
 	measure 'PP Renewal Rate' = DIVIDE(CALCULATE(COUNTROWS(fct_cc_interactions), fct_cc_interactions[pp_renewal_outcome] = "accepted"), CALCULATE(COUNTROWS(fct_cc_interactions), fct_cc_interactions[queue_type] = "pp_renewal"))
 		formatString: 0.0%
 
-	measure 'Avg Handle Time (sec)' = AVERAGE(fct_cc_interactions[handle_time_sec] + fct_cc_interactions[hold_time_sec])
+	measure 'Avg Handle Time (sec)' = AVERAGEX(fct_cc_interactions, fct_cc_interactions[handle_time_sec] + fct_cc_interactions[hold_time_sec])
 		formatString: #,0
 
 	measure 'Escalation Rate' = DIVIDE(CALCULATE(COUNTROWS(fct_cc_interactions), fct_cc_interactions[escalated_flag] = 1), COUNTROWS(fct_cc_interactions))
