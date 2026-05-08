@@ -34,7 +34,7 @@
 # Run order: after nb_04a (lh_metadata schema and seeds must exist)
 # Default lakehouse: lh_metadata
 
-DEMO_MODE    = True
+DEMO_MODE    = False
 WORKSPACE_ID = "795ce5db-7ea0-4a7c-ba64-e27c9fb568f4"
 MODEL_NAME   = "BrookfieldEnercare"   # display name used to auto-discover MODEL_ID
 METADATA_LH  = "lh_metadata"
