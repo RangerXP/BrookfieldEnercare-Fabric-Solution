@@ -198,7 +198,7 @@ instr_block = " | ".join(_safe(t) for t in ai_instructions) if ai_instructions e
 
 # Verified Q&A block: "Q: {question} -> {answer (truncated to 180 chars)}"
 qa_parts = [
-    f"Q: {_safe(r.TriggerText)} -> {_safe(r.ResponseText[:180])}"
+    f"Q: {_safe(r.TriggerText)} -> {_safe(r.ResponseText[:150])}"
     for r in verified_answers
     if r.TriggerText
 ]
