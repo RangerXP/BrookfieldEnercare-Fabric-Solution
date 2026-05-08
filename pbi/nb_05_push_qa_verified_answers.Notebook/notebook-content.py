@@ -152,7 +152,7 @@ def _post_lro(url, hdrs, max_wait=120):
 
 
 defn_url = f"{FABRIC_API}/workspaces/{WORKSPACE_ID}/semanticModels/{MODEL_ID}/getDefinition"
-defn     = _post_lro(defn_url, headers)
+defn     = _post_lro(defn_url, headers, max_wait=300)
 
 tmdl_files = {
     part["path"]: base64.b64decode(part["payload"]).decode("utf-8")
