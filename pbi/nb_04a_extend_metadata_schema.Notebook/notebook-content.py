@@ -112,18 +112,25 @@ CREATE TABLE IF NOT EXISTS {METADATA_LAKEHOUSE}.ai_metadata (
     TriggerText    STRING    COMMENT 'Question phrase or term that activates this record',
     ResponseText   STRING    COMMENT 'Verified answer text or AI instruction content',
     LinkedKPICode  STRING,
-    IsDraft        INT       DEFAULT 1,
+    IsDraft        INT,
     CreatedDate    DATE
 )
 USING DELTA
 COMMENT 'Copilot AI configuration — verified answers, instructions, term mappings'
 """.strip()
 
+sql_ai_enable_defaults  = f"ALTER TABLE {METADATA_LAKEHOUSE}.ai_metadata SET TBLPROPERTIES ('delta.feature.allowColumnDefaults' = 'supported')"
+sql_ai_default_isdraft  = f"ALTER TABLE {METADATA_LAKEHOUSE}.ai_metadata ALTER COLUMN IsDraft SET DEFAULT 1"
+
 if DEMO_MODE:
     print("[DEMO_MODE] Would execute:\n")
     print(sql_create_ai_metadata)
+    print(sql_ai_enable_defaults)
+    print(sql_ai_default_isdraft)
 else:
     spark.sql(sql_create_ai_metadata)
+    spark.sql(sql_ai_enable_defaults)
+    spark.sql(sql_ai_default_isdraft)
     print("ai_metadata table created")
 
 # METADATA ********************
