@@ -59,3 +59,7 @@ relationship fct_cc_interactions_billing_adj_category_dim_cc_billing_adj_categor
 	fromColumn: fct_cc_interactions.billing_adj_category
 	toColumn: dim_cc_billing_adj.category_code
 
+relationship fct_cc_transcript_turns_interaction_id_fct_cc_interactions_interaction_id
+	fromColumn: fct_cc_transcript_turns.interaction_id
+	toColumn: fct_cc_interactions.interaction_id
+
