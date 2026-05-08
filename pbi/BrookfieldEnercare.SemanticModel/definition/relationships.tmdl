@@ -58,3 +58,4 @@ relationship fct_cc_interactions_customer_id_dim_customer_CustomerKey
 relationship fct_cc_interactions_billing_adj_category_dim_cc_billing_adj_category_code
 	fromColumn: fct_cc_interactions.billing_adj_category
 	toColumn: dim_cc_billing_adj.category_code
+

@@ -70,6 +70,11 @@ table _Measures
 		formatString: 0.0%
 		lineageTag: 0de9cdd3-9eb1-440d-85b6-f99ff400bf19
 
+	column Value
+		lineageTag: dbf943f6-f02d-4604-ab7f-418daf143bf1
+		isNameInferred
+		sourceColumn: [Value]
+
 	partition _Measures = calculated
 		mode: import
 		source = {("")}
