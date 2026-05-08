@@ -51,14 +51,15 @@ print(f"nb_04a | DEMO_MODE={DEMO_MODE} | lakehouse={METADATA_LAKEHOUSE}")
 # CELL ********************
 
 # G1-3, G2-1 — Extend kpi_metadata: add certification + call-center columns
-# Uses ALTER TABLE — does NOT drop or recreate; existing rows keep their values.
+# Delta does not support DEFAULT in ADD COLUMNS — add columns first,
+# then set defaults separately with ALTER COLUMN SET DEFAULT.
 
-sql_alter_kpi = f"""
+sql_alter_kpi_add = f"""
 ALTER TABLE {METADATA_LAKEHOUSE}.kpi_metadata
 ADD COLUMNS (
     KPICode            STRING,
-    IsCertified        INT      DEFAULT 0,
-    Version            INT      DEFAULT 1,
+    IsCertified        INT,
+    Version            INT,
     PreviousFormula    STRING,
     CertifiedBy        STRING,
     CertifiedDate      DATE,
@@ -69,12 +70,19 @@ ADD COLUMNS (
 )
 """.strip()
 
+sql_default_certified = f"ALTER TABLE {METADATA_LAKEHOUSE}.kpi_metadata ALTER COLUMN IsCertified SET DEFAULT 0"
+sql_default_version   = f"ALTER TABLE {METADATA_LAKEHOUSE}.kpi_metadata ALTER COLUMN Version SET DEFAULT 1"
+
 if DEMO_MODE:
     print("[DEMO_MODE] Would execute:\n")
-    print(sql_alter_kpi)
+    print(sql_alter_kpi_add)
+    print(sql_default_certified)
+    print(sql_default_version)
 else:
-    spark.sql(sql_alter_kpi)
-    print("kpi_metadata extended: 10 columns added")
+    spark.sql(sql_alter_kpi_add)
+    spark.sql(sql_default_certified)
+    spark.sql(sql_default_version)
+    print("kpi_metadata extended: 10 columns added, defaults set")
 
 # METADATA ********************
 
