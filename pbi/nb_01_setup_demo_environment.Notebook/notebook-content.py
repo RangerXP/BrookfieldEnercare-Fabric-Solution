@@ -1072,3 +1072,6 @@ print("\nAll tables ready. Run nb_02_metadata_pipeline_demo.py next.")
 # META   "language": "python",
 # META   "language_group": "synapse_pyspark"
 # META }
+
+# MARKDOWN ********************
+

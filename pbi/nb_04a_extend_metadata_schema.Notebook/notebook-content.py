@@ -32,7 +32,7 @@
 # DEMO_MODE = True  → print all SQL/data; no writes to Delta
 # DEMO_MODE = False → execute all ALTER / CREATE / INSERT statements
 
-DEMO_MODE = True          # TODO: set False to execute against lh_metadata
+DEMO_MODE = False          # TODO: set False to execute against lh_metadata
 
 METADATA_LAKEHOUSE = "lh_metadata"
 CERTIFIED_BY       = "Christopher Dingle"
