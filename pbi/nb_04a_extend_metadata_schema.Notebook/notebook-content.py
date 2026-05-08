@@ -520,7 +520,7 @@ CREATE OR REPLACE VIEW {METADATA_LAKEHOUSE}.vw_business_metadata_current AS
 SELECT
     'asset'          AS RecordCategory,
     'asset_metadata' AS SourceTable,
-    AssetName        AS ObjectKey,
+    ObjectName       AS ObjectKey,
     Description,
     Owner,
     Steward,
@@ -540,20 +540,21 @@ UNION ALL
 SELECT
     'column'           AS RecordCategory,
     'column_metadata'  AS SourceTable,
-    CONCAT(AssetName, '.', ColumnName) AS ObjectKey,
-    Description,
+    CONCAT(a.ObjectName, '.', c.ColumnName) AS ObjectKey,
+    c.Description,
     CAST(NULL AS STRING) AS Owner,
     CAST(NULL AS STRING) AS Steward,
     CAST(NULL AS STRING) AS Domain,
     CAST(NULL AS STRING) AS Sensitivity,
-    IsDraft,
+    c.IsDraft,
     CAST(NULL AS STRING) AS DefinitionHash,
     CAST(NULL AS STRING) AS KPICode,
     CAST(NULL AS INT)    AS IsCertified,
     CAST(NULL AS STRING) AS Formula,
-    ColumnName           AS TriggerText,
-    DataType             AS ResponseText
-FROM {METADATA_LAKEHOUSE}.column_metadata
+    c.ColumnName         AS TriggerText,
+    CAST(NULL AS STRING) AS ResponseText
+FROM {METADATA_LAKEHOUSE}.column_metadata c
+JOIN {METADATA_LAKEHOUSE}.asset_metadata a ON a.AssetId = c.AssetId
 
 UNION ALL
 
