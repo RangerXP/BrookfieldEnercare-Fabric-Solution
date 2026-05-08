@@ -185,7 +185,27 @@ else:
 # IsCertified=0 — pending business sign-off from Christopher/Ranbir
 
 from pyspark.sql import Row
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DoubleType, DateType
 from datetime import date
+
+KPI_SCHEMA = StructType([
+    StructField("KPIName",            StringType(),  True),
+    StructField("Formula",            StringType(),  True),
+    StructField("Domain",             StringType(),  True),
+    StructField("Owner",              StringType(),  True),
+    StructField("Description",        StringType(),  True),
+    StructField("IsDraft",            IntegerType(), True),
+    StructField("KPICode",            StringType(),  True),
+    StructField("IsCertified",        IntegerType(), True),
+    StructField("Version",            IntegerType(), True),
+    StructField("PreviousFormula",    StringType(),  True),
+    StructField("CertifiedBy",        StringType(),  True),
+    StructField("CertifiedDate",      DateType(),    True),
+    StructField("TargetValue",        DoubleType(),  True),
+    StructField("WarningThreshold",   DoubleType(),  True),
+    StructField("CriticalThreshold",  DoubleType(),  True),
+    StructField("UnitType",           StringType(),  True),
+])
 
 existing_measures = [
     ("Total MRR",             "total_mrr",             "Revenue",
@@ -237,7 +257,7 @@ rows_set_a = [
     for name, code, domain, formula, unit in existing_measures
 ]
 
-df_set_a = spark.createDataFrame(rows_set_a)
+df_set_a = spark.createDataFrame(rows_set_a, schema=KPI_SCHEMA)
 
 if DEMO_MODE:
     print(f"[DEMO_MODE] Set A — {len(rows_set_a)} existing DAX measures (IsCertified=0):\n")
@@ -310,7 +330,7 @@ rows_set_b = [
     for name, code, domain, owner, formula, desc, tgt, warn, crit, unit in cc_kpi_defs
 ]
 
-df_set_b = spark.createDataFrame(rows_set_b)
+df_set_b = spark.createDataFrame(rows_set_b, schema=KPI_SCHEMA)
 
 if DEMO_MODE:
     print(f"[DEMO_MODE] Set B — {len(rows_set_b)} certified call center KPIs (IsCertified=1):\n")
@@ -388,7 +408,18 @@ rows_va = [
 ]
 record_id = len(rows_va) + 1
 
-df_va = spark.createDataFrame(rows_va)
+AI_SCHEMA = StructType([
+    StructField("RecordID",      IntegerType(), True),
+    StructField("ModelName",     StringType(),  True),
+    StructField("RecordType",    StringType(),  True),
+    StructField("TriggerText",   StringType(),  True),
+    StructField("ResponseText",  StringType(),  True),
+    StructField("LinkedKPICode", StringType(),  True),
+    StructField("IsDraft",       IntegerType(), True),
+    StructField("CreatedDate",   DateType(),    True),
+])
+
+df_va = spark.createDataFrame(rows_va, schema=AI_SCHEMA)
 
 if DEMO_MODE:
     print(f"[DEMO_MODE] Verified answers — {len(rows_va)} rows across FCR, CSAT, PP_RNW_RATE:\n")
@@ -445,7 +476,7 @@ rows_instr = [
     for i, (title, trigger, content) in enumerate(ai_instructions)
 ]
 
-df_instr = spark.createDataFrame(rows_instr)
+df_instr = spark.createDataFrame(rows_instr, schema=AI_SCHEMA)
 
 if DEMO_MODE:
     print(f"[DEMO_MODE] AI instruction rows — {len(rows_instr)} rows:\n")
