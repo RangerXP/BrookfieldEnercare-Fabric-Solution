@@ -26,4 +26,5 @@ ref table _Measures
 ref table dim_cc_agent
 ref table dim_cc_billing_adj
 ref table fct_cc_interactions
+ref table fct_cc_transcript_turns
 
