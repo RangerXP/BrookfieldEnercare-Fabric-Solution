@@ -71,7 +71,16 @@ ai_df = spark.sql(f"""
 ai_rows = ai_df.collect()
 
 ai_instructions   = list(dict.fromkeys(r.ResponseText for r in ai_rows if r.RecordType == "ai_instruction" and r.ResponseText))
-verified_answers  = [r for r in ai_rows if r.RecordType == "verified_answer" and r.ResponseText]
+
+# Deduplicate verified_answers by (TriggerText, ResponseText) — keeps first occurrence
+_seen_qa = set()
+verified_answers = []
+for r in ai_rows:
+    if r.RecordType == "verified_answer" and r.ResponseText:
+        key = (r.TriggerText, r.ResponseText)
+        if key not in _seen_qa:
+            _seen_qa.add(key)
+            verified_answers.append(r)
 
 print(f"Loaded: {len(ai_instructions)} AI instruction(s), {len(verified_answers)} verified answer(s)")
 
