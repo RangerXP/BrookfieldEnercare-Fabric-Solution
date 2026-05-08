@@ -263,12 +263,35 @@ else:
         f"/semanticModels/{MODEL_ID}/updateDefinition"
     )
     push_resp = requests.post(push_url, headers=headers, json=body)
-    if push_resp.status_code in (200, 202):
-        print(f"SUCCESS — {MODEL_NAME} semantic model updated via Fabric REST API.")
-        if push_resp.status_code == 202:
-            print("  (202 Accepted — changes applied asynchronously)")
-    else:
+    if push_resp.status_code not in (200, 202):
         print(f"ERROR {push_resp.status_code}:\n{push_resp.text}")
+    elif push_resp.status_code == 202:
+        # updateDefinition is async — poll until Web Modeling refresh completes
+        # CRITICAL: Data refresh (Cell 7) must not start until this finishes,
+        # otherwise updateDefinition's Web Modeling refresh will invalidate the frame.
+        lro_loc    = push_resp.headers.get("Location", "")
+        retry_secs = int(push_resp.headers.get("Retry-After", 10))
+        print(f"  updateDefinition accepted (202). Waiting for Web Modeling refresh...")
+        wm_waited = 0
+        wm_done   = False
+        while wm_waited < 180:
+            time.sleep(retry_secs)
+            wm_waited += retry_secs
+            r = requests.get(lro_loc, headers=headers)
+            wm_status = r.json().get("status", "Unknown") if r.status_code in (200, 202) else "Error"
+            print(f"    [{wm_waited:3d}s] Web Modeling status={wm_status}")
+            if wm_status == "Succeeded":
+                wm_done = True
+                break
+            if wm_status in ("Failed", "Cancelled", "Error"):
+                print(f"  Web Modeling refresh ended with status={wm_status}")
+                break
+        if wm_done:
+            print(f"SUCCESS — {MODEL_NAME} semantic model updated. Web Modeling refresh complete.")
+        else:
+            print(f"  [WARN] Web Modeling refresh did not confirm Succeeded within 180s — proceeding.")
+    else:
+        print(f"SUCCESS — {MODEL_NAME} semantic model updated (200 synchronous).")
 
 
 # METADATA ********************
