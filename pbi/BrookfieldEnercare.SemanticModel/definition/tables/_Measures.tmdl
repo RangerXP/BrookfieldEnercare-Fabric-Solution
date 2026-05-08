@@ -72,5 +72,5 @@ table _Measures
 
 	partition _Measures = calculated
 		mode: import
-		source = ""
+		source = {("")}
 
