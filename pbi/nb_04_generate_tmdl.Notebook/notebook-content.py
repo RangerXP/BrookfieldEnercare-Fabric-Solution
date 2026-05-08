@@ -138,26 +138,31 @@ MODEL_ID = next(
 print(f"Found model: {MODEL_NAME}  ({MODEL_ID})")
 
 
-def _poll_lro(url, hdrs, max_wait=90):
-    """GET a Fabric LRO endpoint; poll Location header until 200."""
-    resp = requests.get(url, headers=hdrs)
+def _post_lro(url, hdrs, max_wait=120):
+    """POST to a Fabric LRO endpoint; poll Location/result until Succeeded."""
+    resp = requests.post(url, headers=hdrs)
     if resp.status_code == 200:
         return resp.json()
     if resp.status_code != 202:
         resp.raise_for_status()
-    loc = resp.headers.get("Location", url)
-    for _ in range(max_wait):
-        time.sleep(1)
+    loc        = resp.headers["Location"]
+    retry_secs = int(resp.headers.get("Retry-After", 20))
+    waited     = 0
+    while waited < max_wait:
+        time.sleep(retry_secs)
+        waited += retry_secs
         r = requests.get(loc, headers=hdrs)
-        if r.status_code == 200:
-            return r.json()
-        if r.status_code not in (202, 200):
+        if r.status_code == 200 and r.json().get("status") == "Succeeded":
+            result = requests.get(f"{loc}/result", headers=hdrs)
+            result.raise_for_status()
+            return result.json()
+        if r.status_code not in (200, 202):
             r.raise_for_status()
     raise TimeoutError(f"LRO timed out after {max_wait}s: {url}")
 
 
-defn_url = f"{FABRIC_API}/workspaces/{WORKSPACE_ID}/semanticModels/{MODEL_ID}/definition"
-defn     = _poll_lro(defn_url, headers)
+defn_url = f"{FABRIC_API}/workspaces/{WORKSPACE_ID}/semanticModels/{MODEL_ID}/getDefinition"
+defn     = _post_lro(defn_url, headers)
 
 tmdl_files = {
     part["path"]: base64.b64decode(part["payload"]).decode("utf-8")
@@ -404,7 +409,7 @@ if not DEMO_MODE:
     body     = {"definition": {"format": "TMDL", "parts": parts}}
     push_url = (
         f"{FABRIC_API}/workspaces/{WORKSPACE_ID}"
-        f"/semanticModels/{MODEL_ID}/definition?updateMode=UpdateDefinition"
+        f"/semanticModels/{MODEL_ID}/updateDefinition"
     )
     push_resp = requests.post(push_url, headers=headers, json=body)
     if push_resp.status_code in (200, 202):
