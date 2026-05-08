@@ -48,38 +48,48 @@ print(f"Workspace: {WORKSPACE_ID}  |  Target model: {MODEL_NAME}")
 # CELL ********************
 
 # ── Cell 2: Read metadata from lh_metadata ───────────────────────────────────
-# Queries vw_business_metadata_current for table/column descriptions and AI
-# instructions; queries kpi_metadata directly (IsCertified=1) for KPI descs.
+# vw_business_metadata_current columns (current schema):
+#   ObjectName, AssetDescription          — table-level rows (ColumnName IS NULL)
+#   ObjectName, ColumnName, ColumnDescription — column-level rows
+# kpi_metadata queried directly for certified KPI descriptions.
+# ai_metadata queried separately; falls back to [] if table doesn't exist yet.
 
 meta_df = spark.sql(f"SELECT * FROM {METADATA_LH}.vw_business_metadata_current")
+rows    = meta_df.collect()
 
-# Table descriptions  (RecordCategory = 'asset', ObjectKey = AssetName)
+# Table descriptions — rows where ColumnName is null
 table_descs = {
-    r.ObjectKey: r.Description
-    for r in meta_df.filter("RecordCategory = 'asset'").collect()
-    if r.Description
+    r.ObjectName: r.AssetDescription
+    for r in rows
+    if r.ColumnName is None and r.AssetDescription
 }
 
-# Column descriptions  (RecordCategory = 'column', TriggerText = ColumnName,
-#                       ObjectKey = 'AssetName.ColumnName')
+# Column descriptions — rows where ColumnName is populated
 col_descs = {}
-for r in meta_df.filter("RecordCategory = 'column'").collect():
-    if r.Description and r.TriggerText and r.ObjectKey and "." in r.ObjectKey:
-        asset = r.ObjectKey.split(".")[0]
-        col_descs[(asset, r.TriggerText)] = r.Description
+for r in rows:
+    if r.ColumnName and r.ColumnDescription:
+        col_descs[(r.ObjectName, r.ColumnName)] = r.ColumnDescription
 
-# Certified KPI descriptions — IsCertified = 1 gate (G2-4)
-kpi_df = spark.sql(
-    f"SELECT KPIName, Description FROM {METADATA_LH}.kpi_metadata WHERE IsCertified = 1"
-)
-kpi_descs = {r.KPIName: r.Description for r in kpi_df.collect() if r.Description}
+# Certified KPI descriptions — IsCertified=1 gate (G2-4)
+# Falls back to all KPIs if IsCertified column not yet added by nb_04a
+try:
+    kpi_df = spark.sql(
+        f"SELECT KpiName, Description FROM {METADATA_LH}.kpi_metadata WHERE IsCertified = 1"
+    )
+    kpi_descs = {r.KpiName: r.Description for r in kpi_df.collect() if r.Description}
+except Exception:
+    kpi_descs = {}
+    print("  [WARN] kpi_metadata missing IsCertified/Description — run nb_04a with DEMO_MODE=False first")
 
-# AI instructions from ai_metadata (RecordCategory = 'ai_instruction')
-ai_instructions = [
-    r.ResponseText
-    for r in meta_df.filter("RecordCategory = 'ai_instruction'").collect()
-    if r.ResponseText
-]
+# AI instructions — falls back to [] if ai_metadata not yet created by nb_04a
+try:
+    ai_df = spark.sql(
+        f"SELECT ResponseText FROM {METADATA_LH}.ai_metadata WHERE IsDraft = 0"
+    )
+    ai_instructions = [r.ResponseText for r in ai_df.collect() if r.ResponseText]
+except Exception:
+    ai_instructions = []
+    print("  [WARN] ai_metadata not found — run nb_04a with DEMO_MODE=False to create it")
 
 print(f"Loaded: {len(table_descs)} table descriptions, {len(col_descs)} column descriptions")
 print(f"        {len(kpi_descs)} certified KPI descriptions, {len(ai_instructions)} AI instructions")
