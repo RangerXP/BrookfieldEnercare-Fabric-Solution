@@ -34,13 +34,15 @@
 # Run order: after nb_04a (ai_metadata must exist with IsDraft=0 rows)
 # Default lakehouse: lh_metadata
 
-DEMO_MODE            = False
-WORKSPACE_ID         = "795ce5db-7ea0-4a7c-ba64-e27c9fb568f4"
-MODEL_NAME           = "BrookfieldEnercare"
-METADATA_LH          = "lh_metadata"
-MAX_ANNOTATION_CHARS = 3800   # safe limit for PBI_AI_Instructions
+DEMO_MODE              = False
+WORKSPACE_ID           = "795ce5db-7ea0-4a7c-ba64-e27c9fb568f4"
+MODEL_NAME             = "BrookfieldEnercare"
+METADATA_LH            = "lh_metadata"
+MAX_ANNOTATION_CHARS   = 3800   # safe limit for PBI_AI_Instructions
+TRIGGER_DATA_REFRESH   = True   # True → fires Power BI Data refresh after annotation push
+                                 # Required to frame new Direct Lake tables (e.g. fct_cc_interactions)
 
-print(f"nb_05_push_qa_verified_answers  |  DEMO_MODE={DEMO_MODE}")
+print(f"nb_05_push_qa_verified_answers  |  DEMO_MODE={DEMO_MODE}  |  TRIGGER_DATA_REFRESH={TRIGGER_DATA_REFRESH}")
 print(f"Workspace: {WORKSPACE_ID}  |  Target model: {MODEL_NAME}")
 print(f"Max annotation chars: {MAX_ANNOTATION_CHARS}")
 
@@ -68,8 +70,8 @@ ai_df = spark.sql(f"""
 """)
 ai_rows = ai_df.collect()
 
-ai_instructions   = [r.ResponseText for r in ai_rows if r.RecordType == "ai_instruction"  and r.ResponseText]
-verified_answers  = [r for r in ai_rows          if r.RecordType == "verified_answer" and r.ResponseText]
+ai_instructions   = list(dict.fromkeys(r.ResponseText for r in ai_rows if r.RecordType == "ai_instruction" and r.ResponseText))
+verified_answers  = [r for r in ai_rows if r.RecordType == "verified_answer" and r.ResponseText]
 
 print(f"Loaded: {len(ai_instructions)} AI instruction(s), {len(verified_answers)} verified answer(s)")
 
@@ -288,6 +290,73 @@ if verified_answers:
 mode_tag = "DRY RUN — no changes written" if DEMO_MODE else "APPLIED — semantic model updated"
 print(f"\n  Status: {mode_tag}")
 print("\nTo verify: ask Copilot 'what is our FCR?' or 'what is our CSAT score?'")
+
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# CELL ********************
+
+# ── Cell 7: Trigger Power BI Data Refresh (frames Direct Lake tables) ─────────
+# Web Modeling refreshes (from updateDefinition in Cell 5) update TMDL metadata
+# only — they do NOT re-frame Delta tables in Direct Lake mode.
+# A separate "Data" refresh via the Power BI REST API is required to:
+#   - Create the columnar frame for new Direct Lake tables (fct_cc_interactions, etc.)
+#   - Resolve "table is not refreshed" errors in Copilot and reports
+#
+# TRIGGER_DATA_REFRESH = True  → fires and polls to completion (~30–90 s)
+# TRIGGER_DATA_REFRESH = False → prints instructions, no API call
+
+import time as _time
+
+PBI_API_GROUPS = f"https://api.powerbi.com/v1.0/myorg/groups/{WORKSPACE_ID}/datasets/{MODEL_ID}"
+
+if not TRIGGER_DATA_REFRESH or DEMO_MODE:
+    print("[SKIPPED] Data refresh not triggered.")
+    if DEMO_MODE:
+        print("  DEMO_MODE=True — set DEMO_MODE=False to enable.")
+    else:
+        print("  TRIGGER_DATA_REFRESH=False — set True to auto-frame Direct Lake tables.")
+    print("\n  Manual alternative:")
+    print("  Fabric portal → semantic model → Settings → Refresh → Refresh now")
+else:
+    print("Triggering Power BI Data refresh (frames Direct Lake tables)...")
+    refresh_req = requests.post(
+        f"{PBI_API_GROUPS}/refreshes",
+        headers={**headers, "Content-Type": "application/json"},
+        json={"notifyOption": "NoNotification"},
+    )
+    if refresh_req.status_code not in (200, 202):
+        print(f"ERROR {refresh_req.status_code}: {refresh_req.text}")
+    else:
+        print(f"  Refresh accepted ({refresh_req.status_code}). Polling every 15 s ...")
+        max_polls    = 24   # 6 minutes total
+        poll_secs    = 15
+        final_status = "Unknown"
+        for poll_i in range(max_polls):
+            _time.sleep(poll_secs)
+            hist = requests.get(f"{PBI_API_GROUPS}/refreshes?$top=1", headers=headers)
+            hist.raise_for_status()
+            top = hist.json().get("value", [{}])[0]
+            final_status = top.get("status", "Unknown")
+            end_time = top.get("endTime", "—")
+            print(f"  [{poll_i+1:02d}/{max_polls}] status={final_status}  endTime={end_time}")
+            if final_status in ("Completed", "Failed", "Cancelled"):
+                break
+
+        if final_status == "Completed":
+            print(f"\nSUCCESS — Data refresh completed. Direct Lake tables are now framed.")
+            print("  fct_cc_interactions, dim_cc_agent, dim_cc_billing_adj are queryable.")
+            print("  Retry your Copilot question: 'What is our FCR Rate?'")
+        else:
+            err = top.get("serviceExceptionJson", "")
+            print(f"\nERROR — Refresh ended with status={final_status}")
+            if err:
+                print(f"  Detail: {err[:400]}")
 
 
 # METADATA ********************
