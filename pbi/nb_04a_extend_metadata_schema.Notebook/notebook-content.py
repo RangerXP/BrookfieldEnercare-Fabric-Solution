@@ -128,9 +128,19 @@ if DEMO_MODE:
     print(sql_ai_enable_defaults)
     print(sql_ai_default_isdraft)
 else:
-    spark.sql(sql_create_ai_metadata)
-    spark.sql(sql_ai_enable_defaults)
-    spark.sql(sql_ai_default_isdraft)
+    try:
+        spark.sql(sql_create_ai_metadata)
+        spark.sql(sql_ai_enable_defaults)
+        spark.sql(sql_ai_default_isdraft)
+    except Exception as e:
+        if "DELTA_PATH_DOES_NOT_EXIST" in str(e):
+            print("  [WARN] Ghost catalog entry — dropping and recreating ai_metadata")
+            spark.sql(f"DROP TABLE IF EXISTS {METADATA_LAKEHOUSE}.ai_metadata")
+            spark.sql(sql_create_ai_metadata)
+            spark.sql(sql_ai_enable_defaults)
+            spark.sql(sql_ai_default_isdraft)
+        else:
+            raise
     print("ai_metadata table created")
 
 # METADATA ********************
