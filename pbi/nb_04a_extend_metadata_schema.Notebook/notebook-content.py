@@ -70,19 +70,27 @@ ADD COLUMNS (
 )
 """.strip()
 
+sql_enable_defaults   = f"ALTER TABLE {METADATA_LAKEHOUSE}.kpi_metadata SET TBLPROPERTIES ('delta.feature.allowColumnDefaults' = 'supported')"
 sql_default_certified = f"ALTER TABLE {METADATA_LAKEHOUSE}.kpi_metadata ALTER COLUMN IsCertified SET DEFAULT 0"
 sql_default_version   = f"ALTER TABLE {METADATA_LAKEHOUSE}.kpi_metadata ALTER COLUMN Version SET DEFAULT 1"
 
 if DEMO_MODE:
     print("[DEMO_MODE] Would execute:\n")
     print(sql_alter_kpi_add)
+    print(sql_enable_defaults)
     print(sql_default_certified)
     print(sql_default_version)
 else:
-    spark.sql(sql_alter_kpi_add)
+    existing_cols = [c.name for c in spark.table(f"{METADATA_LAKEHOUSE}.kpi_metadata").schema]
+    if "KPICode" not in existing_cols:
+        spark.sql(sql_alter_kpi_add)
+        print("kpi_metadata: 10 columns added")
+    else:
+        print("kpi_metadata: extension columns already present — skipping ADD COLUMNS")
+    spark.sql(sql_enable_defaults)
     spark.sql(sql_default_certified)
     spark.sql(sql_default_version)
-    print("kpi_metadata extended: 10 columns added, defaults set")
+    print("kpi_metadata: defaults set")
 
 # METADATA ********************
 

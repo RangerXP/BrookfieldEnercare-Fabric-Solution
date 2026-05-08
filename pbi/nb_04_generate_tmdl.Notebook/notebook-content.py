@@ -53,27 +53,27 @@ print(f"Workspace: {WORKSPACE_ID}  |  Target model: {MODEL_NAME}")
 # CELL ********************
 
 # ── Cell 2: Read metadata from lh_metadata ───────────────────────────────────
-# vw_business_metadata_current columns (current schema):
-#   ObjectName, AssetDescription          — table-level rows (ColumnName IS NULL)
-#   ObjectName, ColumnName, ColumnDescription — column-level rows
-# kpi_metadata queried directly for certified KPI descriptions.
-# ai_metadata queried separately; falls back to [] if table doesn't exist yet.
+# vw_business_metadata_current columns (nb_04a schema):
+#   RecordCategory='asset'  → ObjectKey=TableName, Description
+#   RecordCategory='column' → ObjectKey='Table.Column', TriggerText=ColumnName, Description
+# kpi_metadata and ai_metadata queried directly (falls back gracefully).
 
 meta_df = spark.sql(f"SELECT * FROM {METADATA_LH}.vw_business_metadata_current")
 rows    = meta_df.collect()
 
-# Table descriptions — rows where ColumnName is null
+# Table descriptions — asset rows
 table_descs = {
-    r.ObjectName: r.AssetDescription
+    r.ObjectKey: r.Description
     for r in rows
-    if r.ColumnName is None and r.AssetDescription
+    if r.RecordCategory == "asset" and r.Description
 }
 
-# Column descriptions — rows where ColumnName is populated
+# Column descriptions — column rows; ObjectKey = "TableName.ColumnName"
 col_descs = {}
 for r in rows:
-    if r.ColumnName and r.ColumnDescription:
-        col_descs[(r.ObjectName, r.ColumnName)] = r.ColumnDescription
+    if r.RecordCategory == "column" and r.Description and r.TriggerText:
+        tbl = r.ObjectKey.split(".")[0] if "." in r.ObjectKey else r.ObjectKey
+        col_descs[(tbl, r.TriggerText)] = r.Description
 
 # Certified KPI descriptions — IsCertified=1 gate (G2-4)
 # Falls back to all KPIs if IsCertified column not yet added by nb_04a
@@ -89,7 +89,8 @@ except Exception:
 # AI instructions — falls back to [] if ai_metadata not yet created by nb_04a
 try:
     ai_df = spark.sql(
-        f"SELECT ResponseText FROM {METADATA_LH}.ai_metadata WHERE IsDraft = 0"
+        f"SELECT ResponseText FROM {METADATA_LH}.ai_metadata"
+        f" WHERE IsDraft = 0 AND RecordType = 'ai_instruction'"
     )
     ai_instructions = [r.ResponseText for r in ai_df.collect() if r.ResponseText]
 except Exception:
