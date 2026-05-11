@@ -309,12 +309,12 @@ try:
         JOIN {DEMO_LAKEHOUSE}.dim_date         d ON d.DateKey = f.TransactionDateKey
         JOIN {DEMO_LAKEHOUSE}.dim_product      p ON p.ProductKey = f.ProductKey
         WHERE f.Status = 'Posted'
-          AND d.Year = 2025
+          AND d.Year = 2024
         GROUP BY d.Year, d.Month, d.MonthName, p.ProductCategory
         ORDER BY d.Year, d.Month, p.ProductCategory
         LIMIT 12
     """)
-    print("  fct_billing — 2025 MRR by Product Category:\n")
+    print("  fct_billing — 2024 MRR by Product Category:\n")
     df_mrr.show(12, truncate=False)
 except Exception as e:
     print(f"  [Fallback] fct_billing aggregation: {e}")
