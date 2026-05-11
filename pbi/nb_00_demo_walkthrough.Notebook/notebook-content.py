@@ -669,7 +669,7 @@ try:
             c.IsDraft
         FROM {META_LAKEHOUSE}.column_metadata c
         JOIN {META_LAKEHOUSE}.asset_metadata  a ON a.AssetId = c.AssetId
-        WHERE a.ObjectName IN ('dim_customer', 'fct_billing', 'fct_service_request')
+        WHERE c.Description IS NOT NULL AND LENGTH(c.Description) > 0
         ORDER BY a.ObjectName, c.ColumnName
         LIMIT 15
     """)
