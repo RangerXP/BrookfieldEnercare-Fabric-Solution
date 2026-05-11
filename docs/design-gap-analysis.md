@@ -294,5 +294,5 @@ TMDL files in `/pbi/BrookfieldEnercare.SemanticModel/definition/tables/` are the
 | `pbi/nb_02_metadata_pipeline_demo.Notebook/` | Metadata extractor + Purview dry-run (activate by setting `DEMO_MODE = False`) |
 | `pbi/nb_03_pbi_star_schema.Notebook/` | Star schema builder |
 | `pbi/BrookfieldEnercare.SemanticModel/definition/` | TMDL source files — target for nb_04 output |
-| `pbi/Enercare Governance Agent.DataAgent/` | Data Agent config — AI instructions in `stage_config.json` |
+| `pbi/Enercare Data Agent.DataAgent/` | Data Agent config — AI instructions in `stage_config.json` (semantic model datasource) |
 | `archive/original/purview/` | Reference scripts: `06_purview_push_descriptions.py`, `07_purview_register_lineage.py`, `ai_gap_fill.py` |

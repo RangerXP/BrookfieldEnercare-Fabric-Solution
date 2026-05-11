@@ -19,7 +19,7 @@ entirely inside a Fabric workspace — no SQL Server required. It demonstrates:
 | **Power BI Direct Lake semantic model** | Star schema built by nb_03, published as a TMDL semantic model with 12 DAX measures covering MRR, churn, SLA, warranty |
 | **AI-grounded Copilot answers** | nb_04 injects table/column descriptions into the live semantic model via Fabric REST API; nb_05 pushes verified Q&A pairs into the `PBI_AI_Instructions` annotation |
 | **Certified KPI governance** | KPIs flow from SQL header → lh_metadata → IsCertified gate → semantic model and Copilot grounding |
-| **Natural-language Data Agent** | Enercare Governance Agent queries both star schema and metadata lakehouses — answers questions like "what tables have PII?" or "show me SLA breach rate by technician" |
+| **Natural-language Data Agent** | Enercare Data Agent queries the BrookfieldEnercare semantic model — answers questions like "what is our FCR?" or "show me SLA breach rate by technician" using certified KPI definitions |
 | **Purview integration (planned)** | Metadata in lh_metadata is structured and ready for Atlas entity push, lineage registration, and business glossary population |
 
 ---
@@ -110,10 +110,10 @@ SQL Server / source systems
          ┌─────────────┴──────────────────┐
          ▼                                ▼
 ┌──────────────────┐       ┌──────────────────────────────┐
-│  Power BI Report │       │  Enercare Governance Agent   │
+│  Power BI Report │       │  Enercare Data Agent         │
 │  (Direct Lake)   │       │  (AI Data Agent — NL queries │
-└──────────────────┘       │   over star schema +         │
-                           │   metadata lakehouses)       │
+└──────────────────┘       │   over semantic model;       │
+                           │   FCR, CSAT, MRR, SLA)       │
                            └──────────────────────────────┘
                                           │
                                           ▼  (planned)
@@ -287,7 +287,8 @@ nb_04 and nb_05 can run independently after nb_04a.
 │   ├── BrookfieldEnercare.Report/               Power BI report
 │   ├── lh_enercare_demo.Lakehouse/              Demo data lakehouse
 │   ├── lh_metadata.Lakehouse/                   Governance metadata lakehouse
-│   └── Enercare Governance Agent.DataAgent/     AI agent (natural language queries)
+│   ├── Enercare Data Agent.DataAgent/           AI agent (NL queries over semantic model)
+│   └── nb_05_push_qa_verified_answers.Notebook/ Pushes verified Q&A to PBI_AI_Instructions
 │
 └── sql/
     └── 02_extract_from_modules.sql    T-SQL metadata extractor (SQL Server path)

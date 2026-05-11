@@ -1537,9 +1537,9 @@ ARCHITECTURE = """
               │                      │
               ▼                      ▼
   ┌─────────────────┐    ┌────────────────────────────┐
-  │  Power BI       │    │  Enercare Governance Agent │
-  │  Copilot        │    │  (Data Agent — Q&A on      │
-  │  (verified ans) │    │   lh_metadata + reports)   │
+  │  Power BI       │    │  Enercare Data Agent       │
+  │  Copilot        │    │  (NL queries on semantic   │
+  │  (verified ans) │    │   model — FCR, CSAT, MRR)  │
   └─────────────────┘    └────────────────────────────┘
 
   METADATA FLOW (separate from data flow)
