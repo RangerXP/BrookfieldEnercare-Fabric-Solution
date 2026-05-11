@@ -256,6 +256,11 @@ for tbl, _ in star_tables:
 #   Pull representative rows from the star schema to ground the audience.
 # ════════════════════════════════════════════════════════════════════════════
 
+# Guard: re-define session variables if kernel was reset or cell run independently
+if 'DEMO_LAKEHOUSE' not in vars(): DEMO_LAKEHOUSE = "lh_enercare_demo"
+if 'META_LAKEHOUSE'  not in vars(): META_LAKEHOUSE  = "lh_metadata"
+if 'DEMO_MODE'       not in vars(): DEMO_MODE       = False
+
 print("━" * 72)
 print("  ACT II — SAMPLE BUSINESS DATA: Who are our customers?")
 print("━" * 72)
@@ -298,12 +303,12 @@ try:
             d.MonthName,
             p.ProductCategory,
             COUNT(DISTINCT f.CustomerKey)          AS ActiveCustomers,
-            ROUND(SUM(f.MonthlyCharge), 2)         AS MRR_CAD,
-            ROUND(AVG(f.MonthlyCharge), 2)         AS AvgMonthlyCharge
+            ROUND(SUM(f.Amount), 2)                AS MRR_CAD,
+            ROUND(AVG(f.Amount), 2)                AS AvgMonthlyCharge
         FROM {DEMO_LAKEHOUSE}.fct_billing      f
-        JOIN {DEMO_LAKEHOUSE}.dim_date         d ON d.DateKey    = f.DateKey
+        JOIN {DEMO_LAKEHOUSE}.dim_date         d ON d.DateKey = f.TransactionDateKey
         JOIN {DEMO_LAKEHOUSE}.dim_product      p ON p.ProductKey = f.ProductKey
-        WHERE f.BillingStatus = 'Posted'
+        WHERE f.Status = 'Posted'
           AND d.Year = 2025
         GROUP BY d.Year, d.Month, d.MonthName, p.ProductCategory
         ORDER BY d.Year, d.Month, p.ProductCategory
@@ -344,11 +349,11 @@ try:
     df_sla = spark.sql(f"""
         SELECT
             COUNT(*)                                       AS TotalRequests,
-            SUM(CASE WHEN SLABreached = 1 THEN 1 ELSE 0 END) AS SLABreaches,
+            SUM(CASE WHEN IsSlaBreachFlag = 1 THEN 1 ELSE 0 END) AS SLABreaches,
             ROUND(
-                100.0 * SUM(CASE WHEN SLABreached = 0 THEN 1 ELSE 0 END) / COUNT(*), 1
-            )                                              AS SLACompliancePct,
-            ROUND(AVG(ResolutionHours), 1)                 AS AvgResolutionHours
+                100.0 * SUM(CASE WHEN IsSlaBreachFlag = 0 THEN 1 ELSE 0 END) / COUNT(*), 1
+            )                                                     AS SLACompliancePct,
+            ROUND(AVG(DaysToComplete), 1)                         AS AvgDaysToComplete
         FROM {DEMO_LAKEHOUSE}.fct_service_request
     """)
     print("\n  fct_service_request — SLA Compliance:\n")
@@ -363,8 +368,8 @@ try:
         SELECT
             p.ProductCategory,
             p.ProductCode,
-            COUNT(DISTINCT f.CustomerKey) AS ActiveContracts,
-            ROUND(SUM(f.MonthlyCharge), 2) AS MonthlyRevenue
+            COUNT(DISTINCT f.CustomerKey)  AS ActiveContracts,
+            ROUND(SUM(f.MonthlyAmount), 2) AS MonthlyRevenue
         FROM {DEMO_LAKEHOUSE}.fct_contract_month f
         JOIN {DEMO_LAKEHOUSE}.dim_product        p ON p.ProductKey = f.ProductKey
         WHERE f.ContractStatus = 'Active'
