@@ -629,15 +629,15 @@ print("━" * 72)
 try:
     df_assets = spark.sql(f"""
         SELECT
-            AssetName,
+            ObjectName                                                          AS AssetName,
             Domain,
             Owner,
             Steward,
             Sensitivity,
-            CASE WHEN IsDraft = 0 THEN 'Published' ELSE 'Draft' END AS PublishState,
+            CASE WHEN IsDraft = 0 THEN 'Published' ELSE 'Draft' END            AS PublishState,
             CASE WHEN DefinitionHash IS NOT NULL THEN 'Tracked' ELSE 'None' END AS ChangeDetection
         FROM {META_LAKEHOUSE}.asset_metadata
-        ORDER BY Domain, AssetName
+        ORDER BY Domain, ObjectName
         LIMIT 15
     """)
     print("\n  asset_metadata — certified data assets:\n")
@@ -663,13 +663,14 @@ print("─" * 72)
 try:
     df_cols = spark.sql(f"""
         SELECT
-            AssetName,
-            ColumnName,
-            LEFT(Description, 70) AS Description,
-            IsDraft
-        FROM {META_LAKEHOUSE}.column_metadata
-        WHERE AssetName IN ('dim_customer', 'fct_billing', 'fct_service_request')
-        ORDER BY AssetName, ColumnName
+            a.ObjectName                  AS AssetName,
+            c.ColumnName,
+            LEFT(c.Description, 70)       AS Description,
+            c.IsDraft
+        FROM {META_LAKEHOUSE}.column_metadata c
+        JOIN {META_LAKEHOUSE}.asset_metadata  a ON a.AssetId = c.AssetId
+        WHERE a.ObjectName IN ('dim_customer', 'fct_billing', 'fct_service_request')
+        ORDER BY a.ObjectName, c.ColumnName
         LIMIT 15
     """)
     print("\n  column_metadata — sample column descriptions:\n")
