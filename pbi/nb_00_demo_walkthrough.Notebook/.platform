@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "nb_00_demo_walkthrough",
+    "description": "Sequential stakeholder demo walkthrough — 9 Acts covering: business problem, data foundation, metadata extraction, lh_metadata hub, certified KPI governance, TMDL write-back, Copilot grounding, Purview integration, and governance outcomes. Run after nb_01 through nb_05."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "f0e1d2c3-b4a5-9678-fedc-ba9876543210"
+  }
+}
