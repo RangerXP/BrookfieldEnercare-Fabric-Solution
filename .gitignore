@@ -22,7 +22,6 @@ Thumbs.db
 # Fabric / notebook outputs
 .ipynb_checkpoints/
 *.ipynb
-!pbi/**/*.Notebook/notebook-content.ipynb
 
 # Terraform
 .terraform/
