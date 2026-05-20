@@ -24,10 +24,10 @@
 
 # Fabric Notebook: nb_05b_test_sql_connectivity
 # Purpose: Minimal JDBC smoke test for sqlserver-sk2 over the Enercare
-#          workspace managed private endpoint.
+# workspace managed private endpoint.
 #
-# DEMO_MODE = True  -> dry-run (prints the JDBC plan, no connection attempt)
-# DEMO_MODE = False -> live (acquires an Entra token and runs a small query)
+# DEMO_MODE = True  -> dry-run only
+# DEMO_MODE = False -> acquire a token and run a small query
 #
 # This notebook intentionally avoids any hardcoded secrets. If token-based auth
 # is not available for the notebook runtime identity, switch to a Key Vault-
@@ -55,7 +55,7 @@ print(f"Target: {SERVER_NAME}:{SQL_PORT} / {DATABASE_NAME}")
 
 # CELL ********************
 
-# ── Cell 2: Build JDBC config and acquire token ─────────────────────────────
+# Cell 2: Build JDBC config and acquire token
 
 JDBC_URL = (
     f"jdbc:sqlserver://{SERVER_NAME}:{SQL_PORT};"
@@ -120,7 +120,7 @@ else:
 # META }
 
 # CELL ********************
-# ── Cell 3: Execute minimal JDBC connectivity test ──────────────────────────
+# Cell 3: Execute minimal JDBC connectivity test
 
 if DEMO_MODE:
     print("[DRY RUN] No JDBC connection attempted.")

@@ -1,16 +1,12 @@
-# ---------------------------------------------------------------------------
 # demo/fabric/nb_05b_test_sql_connectivity.py
-# Python source mirror of pbi/nb_05b_test_sql_connectivity.Notebook/notebook-content.py
-# Purpose: Minimal JDBC smoke test for sqlserver-sk2 over the Fabric managed
-#          private endpoint created on the Enercare workspace.
-# ---------------------------------------------------------------------------
+# Source mirror of pbi/nb_05b_test_sql_connectivity.Notebook/notebook-content.py
+# Purpose: minimal JDBC smoke test for sqlserver-sk2 through the Enercare
+# workspace managed private endpoint.
 
-# ---------------------------------------------------------------------------
-# CELL 1 — Config
-# ---------------------------------------------------------------------------
+# CELL 1 - Config
 
-# DEMO_MODE = True  -> dry-run (prints the JDBC plan, no connection attempt)
-# DEMO_MODE = False -> live (acquires an Entra token and runs a small query)
+# DEMO_MODE = True  -> dry-run only
+# DEMO_MODE = False -> acquire a token and run a small query
 
 DEMO_MODE                  = True
 WORKSPACE_ID               = "795ce5db-7ea0-4a7c-ba64-e27c9fb568f4"
@@ -25,9 +21,7 @@ print(f"Workspace: {WORKSPACE_ID}")
 print(f"Target: {SERVER_NAME}:{SQL_PORT} / {DATABASE_NAME}")
 
 
-# ---------------------------------------------------------------------------
-# CELL 2 — Build JDBC config and acquire token
-# ---------------------------------------------------------------------------
+# CELL 2 - Build JDBC config and acquire token
 
 JDBC_URL = (
     f"jdbc:sqlserver://{SERVER_NAME}:{SQL_PORT};"
@@ -37,8 +31,6 @@ JDBC_URL = (
     "hostNameInCertificate=*.database.windows.net;"
     f"loginTimeout={SQL_LOGIN_TIMEOUT_SECONDS};"
 )
-
-
 def get_sql_access_token():
     scopes = [
         "https://database.windows.net/",
@@ -51,8 +43,6 @@ def get_sql_access_token():
         except Exception as exc:
             last_error = exc
     raise last_error
-
-
 def describe_access_token(token: str):
     import base64
     import json
@@ -69,8 +59,6 @@ def describe_access_token(token: str):
         "tid": claims.get("tid"),
         "upn": claims.get("upn"),
     }
-
-
 print("JDBC URL prepared.")
 print(f"Smoke-test query: {TEST_QUERY}")
 
@@ -84,9 +72,7 @@ else:
     print(describe_access_token(sql_access_token))
 
 
-# ---------------------------------------------------------------------------
-# CELL 3 — Execute minimal JDBC connectivity test
-# ---------------------------------------------------------------------------
+# CELL 3 - Execute minimal JDBC connectivity test
 
 if DEMO_MODE:
     print("[DRY RUN] No JDBC connection attempted.")
