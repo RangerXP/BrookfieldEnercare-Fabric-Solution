@@ -1,6 +1,6 @@
 # Enercare — Metadata Platform: Working Document
 
-**Last updated:** 2026-05-05  
+**Last updated:** 2026-05-12  
 **Branch:** `enercare` | **File:** `docs/design-gap-analysis.md`  
 **Owners:** Sean Kelley (Microsoft), Brian Lung (Microsoft)  
 **Stakeholders:** Christopher Dingle (VP Data & Analytics), Ranbir Singh, Ci Zhu (Enercare)
@@ -19,8 +19,8 @@
 | G1 | Canonical metadata store | P1 | 🟡 In Progress | Sean |
 | G2 | Certified KPI definitions | P1 | 🟡 In Progress | Sean |
 | CC | Call center data layer | P1 | 🟢 Done | Sean |
-| G3 | Metadata write-back to semantic model | P1 | 🔴 Not Started | Ajay |
-| G4 | Copilot "prep data for AI" | P2 | 🔴 Not Started | Sean |
+| G3 | Metadata write-back to semantic model | P1 | 🟡 In Progress | Ajay |
+| G4 | Copilot "prep data for AI" | P2 | 🟡 In Progress | Sean |
 | G5 | Standalone Copilot governance | P2 | ⏸ Blocked | Alison |
 | G6 | Purview integration (descriptions + glossary) | P2 | 🔴 Not Started | Alison |
 | G7 | Lineage registration in Purview | P3 | 🔴 Not Started | Ajay / Alison |
@@ -36,6 +36,39 @@
 Enercare has hundreds of purpose-built Power BI models with divergent KPI logic. Metadata is "very, very naive" — sparse, tribal, and unstored. Copilot accuracy depends entirely on the quality of metadata behind the semantic model. The north star: a small set of certified semantic models, enriched with business metadata, surfaced through Copilot and Data Agents, backed by a centralized metadata system (Purview + OneLake), and automated via pipelines.
 
 **This document tracks the work required to get there.**
+
+---
+
+## Network Design Note — Fabric To Azure SQL
+
+**Status:** 🟢 Implemented on 2026-05-20
+
+The final private-access pattern for the Enercare demo uses a **Fabric managed private endpoint** from the `Enercare` workspace to Azure SQL server `sqlserver-sk2` in `SQL-West1-RG`.
+
+### Final state
+
+- Workspace: `Enercare` (`795ce5db-7ea0-4a7c-ba64-e27c9fb568f4`)
+- Fabric outbound networking endpoint: `sqlserver-sk2-mpe`
+- Target SQL resource ID: `/subscriptions/c4a3460a-3527-460c-ab59-4a4c7a15646b/resourceGroups/SQL-West1-RG/providers/Microsoft.Sql/servers/sqlserver-sk2`
+- SQL-side private endpoint connection: `Approved`
+- Notebook smoke test: `pbi/nb_05b_test_sql_connectivity.Notebook/`
+
+### Important design decision
+
+- **Do not create a customer-managed VNet in sub1 just to enable Fabric notebook or Spark access to Azure SQL private endpoints.** Fabric Data Engineering workloads use workspace-managed outbound networking and managed private endpoints.
+- The earlier test pattern using a customer VNet, Azure private endpoint, and private DNS zone link in `sub2` was removed after the Fabric-managed path was approved.
+
+### Retired test resources
+
+- Removed private endpoint: `sql-PE1`
+- Removed VNet: `sql-vnet2`
+- Removed private DNS VNet link in `sql-west1-rg` for `privatelink.database.windows.net`
+- Removed dedicated NSG attached to `sql-vnet2`
+
+### When the Bicep file is still useful
+
+- `sql-private-dns-vnet-link.bicep` remains in the repo for **customer-managed VNet** scenarios, such as a VNet data gateway or another Azure client that must resolve Azure SQL private endpoint names through a private DNS zone link.
+- It is **not** the primary solution for Fabric notebook connectivity in this demo.
 
 ---
 
@@ -66,7 +99,7 @@ Enercare has hundreds of purpose-built Power BI models with divergent KPI logic.
 
 **Priority:** P1 — primary business driver stated in meeting  
 **Goal:** Business stakeholders own and certify KPI definitions. Logic is version-controlled. Changes require approval before propagating to the semantic model or Purview.  
-**Status:** 🟡 In Progress — schema extended; `IsCertified = 1` propagation gate (G2-4) and version logic (G2-5) remain
+**Status:** 🟡 In Progress — schema extended; `IsCertified = 1` propagation gate (G2-4) is partially implemented in `nb_04_generate_tmdl.py`; version control logic (G2-5) remains
 
 ### Tasks
 
@@ -75,7 +108,7 @@ Enercare has hundreds of purpose-built Power BI models with divergent KPI logic.
 | G2-1 | Add `IsCertified`, `Version`, `PreviousFormula`, `CertifiedBy`, `CertifiedDate` to `kpi_metadata` (see G1-3) | 🟢 Done | Sean | nb_04a Cell 2 — 10 columns added via ALTER TABLE |
 | G2-2 | Seed `kpi_metadata` with existing 12 DAX measures from BrookfieldEnercare semantic model | 🟢 Done | Sean | nb_04a Cells 6–7 — 12 existing measures (IsCertified=0) + 5 CC KPIs (IsCertified=1) |
 | G2-3 | Define KPI ownership — agree with Christopher/Ranbir on which business owner certifies each domain's KPIs | 🔴 Not Started | Christopher / Ranbir | Business decision |
-| G2-4 | Propagation rule: only `IsCertified = 1` KPIs promoted to semantic model and Purview glossary | 🔴 Not Started | Sean | Gate in nb_04 and nb_05 |
+| G2-4 | Propagation rule: only `IsCertified = 1` KPIs promoted to semantic model and Purview glossary | 🟡 In Progress | Sean | Partially implemented in `nb_04_generate_tmdl.py` with IsCertified filter |
 | G2-5 | Version increment logic: when KPI formula changes, capture old formula in `PreviousFormula`, bump `Version`, reset `IsCertified = 0` | 🔴 Not Started | Sean | Triggers re-certification |
 
 ---
@@ -84,18 +117,18 @@ Enercare has hundreds of purpose-built Power BI models with divergent KPI logic.
 
 **Priority:** P1 — unblocks Copilot configuration and Purview descriptions  
 **Goal:** Descriptions, AI instructions, and verified answers from `lh_metadata` are automatically applied to the BrookfieldEnercare semantic model — without TOM, XMLA, or a Windows VM.  
-**Status:** 🔴 Not Started  
+**Status:** � In Progress  
 **Approach:** Git-based TMDL pipeline. The semantic model is maintained as TMDL files in git. A Fabric notebook renders updated TMDL from `lh_metadata`, commits to the `enercare` branch, and Fabric Source Control sync applies the changes.
 
 ### Tasks
 
 | # | Task | Status | Owner | Notes |
 |---|---|---|---|---|
-| G3-1 | Design TMDL template for table/column description injection | 🔴 Not Started | Ajay | Template per table file in `/pbi/BrookfieldEnercare.SemanticModel/definition/tables/` |
-| G3-2 | Build `nb_04_generate_tmdl.py` — reads `vw_business_metadata_current`, renders TMDL files | 🔴 Not Started | Ajay | Core pipeline notebook |
-| G3-3 | Add AI instructions injection from `ai_metadata` into TMDL model-level block | 🔴 Not Started | Ajay | Requires G1-4 complete |
-| G3-4 | Add verified answers injection from `ai_metadata` into TMDL | 🔴 Not Started | Ajay | Requires G1-4 complete |
-| G3-5 | Git commit + push step in nb_04 (via Fabric Files API or OneLake DFS write + manual sync) | 🔴 Not Started | Ajay | Determine push mechanism |
+| G3-1 | Design TMDL template for table/column description injection | 🟡 In Progress | Ajay | Template logic exists in `pbi/nb_04_generate_tmdl.Notebook` |
+| G3-2 | Build `nb_04_generate_tmdl.py` — reads `vw_business_metadata_current`, renders TMDL files | 🟡 In Progress | Ajay | Core pipeline notebook exists; validation pending |
+| G3-3 | Add AI instructions injection from `ai_metadata` into TMDL model-level block | 🟡 In Progress | Ajay | `nb_04_generate_tmdl.py` reads ai_metadata; injection path exists |
+| G3-4 | Add verified answers injection from `ai_metadata` into TMDL | 🟡 In Progress | Ajay | `nb_04_generate_tmdl.py` has verified-answer read logic; full push check pending |
+| G3-5 | Git commit + push step in nb_04 (via Fabric Files API or OneLake DFS write + manual sync) | 🟡 In Progress | Ajay | `nb_04_generate_tmdl.py` includes Fabric REST updateDefinition logic |
 | G3-6 | Test: run nb_04, verify TMDL diffs are correct, sync to Fabric, confirm descriptions appear in semantic model | 🔴 Not Started | Ajay | |
 | G3-7 | Document the approach for Christopher as the answer to the TOM/Windows VM question | 🟢 Done | Sean | Captured in meeting action items section of this doc |
 
@@ -105,7 +138,7 @@ Enercare has hundreds of purpose-built Power BI models with divergent KPI logic.
 
 **Priority:** P2 — direct path to Copilot accuracy and business adoption  
 **Goal:** BrookfieldEnercare semantic model is fully configured for Copilot: large model storage, simplified schema, verified answers, AI instructions. Business users get trusted answers.  
-**Status:** 🔴 Not Started — semantic model exists but AI configuration not applied  
+**Status:** 🟡 In Progress — semantic model exists and Data Agent stage_config AI instructions are present; model annotation delivery remains pending
 **Dependency:** G3 (write-back pipeline) for automated delivery; G1-4 (`ai_metadata`) for content
 
 ### Tasks
@@ -114,8 +147,8 @@ Enercare has hundreds of purpose-built Power BI models with divergent KPI logic.
 |---|---|---|---|---|
 | G4-1 | Enable large model storage on BrookfieldEnercare semantic model in Fabric settings | 🔴 Not Started | Sean | Fabric portal — Settings → Q&A |
 | G4-2 | Review and simplify schema for Copilot: hide technical columns, set user-facing display names | 🔴 Not Started | Sean | |
-| G4-3 | Draft initial AI instructions block for the semantic model (domain terminology, KPI mappings) | 🔴 Not Started | Sean + Christopher | Source from meeting discussion and `kpi_metadata` |
-| G4-4 | Populate `ai_metadata` with verified Q&A pairs for top 10 high-frequency business questions | 🔴 Not Started | Sean + Ranbir | Business to provide questions; Sean to write verified answers |
+| G4-3 | Draft initial AI instructions block for the semantic model (domain terminology, KPI mappings) | 🟡 In Progress | Sean + Christopher | `pbi/Enercare Data Agent.DataAgent/Files/Config/draft/stage_config.json` already contains grounding instructions |
+| G4-4 | Populate `ai_metadata` with verified Q&A pairs for top 10 high-frequency business questions | 🟡 In Progress | Sean + Ranbir | Verified answer seed content exists in `ai_metadata` scaffold |
 | G4-5 | Deliver via G3 pipeline: AI instructions + verified answers → TMDL → Fabric sync | 🔴 Not Started | Sean | Depends on G3 complete |
 | G4-6 | Test: ask Copilot the 10 verified questions; confirm answers match expected output | 🔴 Not Started | Sean + Christopher | Acceptance test |
 
