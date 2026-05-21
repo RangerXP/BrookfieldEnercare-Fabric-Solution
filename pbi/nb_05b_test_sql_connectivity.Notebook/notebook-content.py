@@ -33,7 +33,7 @@
 # is not available for the notebook runtime identity, use a Key Vault-backed
 # secret path outside this repo.
 
-DEMO_MODE                  = True
+DEMO_MODE                  = False
 WORKSPACE_ID               = "795ce5db-7ea0-4a7c-ba64-e27c9fb568f4"
 SERVER_NAME                = "sqlserver-sk2.database.windows.net"
 DATABASE_NAME              = "sqldemo"
@@ -146,3 +146,10 @@ else:
         print("  CREATE USER [<upn-or-display-name>] FROM EXTERNAL PROVIDER;")
         print("  ALTER ROLE db_datareader ADD MEMBER [<upn-or-display-name>];")
         raise
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
