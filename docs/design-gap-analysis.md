@@ -1,331 +1,368 @@
-# Enercare — Metadata Platform: Working Document
+# Enercare - Build Gap Analysis (vNext)
 
-**Last updated:** 2026-05-12  
+**Last updated:** 2026-05-20  
 **Branch:** `enercare` | **File:** `docs/design-gap-analysis.md`  
 **Owners:** Sean Kelley (Microsoft), Brian Lung (Microsoft)  
-**Stakeholders:** Christopher Dingle (VP Data & Analytics), Ranbir Singh, Ci Zhu (Enercare)
+**Stakeholders:** Christopher Dingle (VP Data & Analytics), Ranbir Singh, Alison, Ajay
 
-> **How to use this document**  
-> Each gap section contains discrete tasks. Update `Status` and `Owner` as work progresses.  
-> Status values: `🔴 Not Started` · `🟡 In Progress` · `🟢 Done` · `⏸ Blocked`  
-> Add notes under tasks as decisions are made. Commit changes to `enercare` branch.
+> **What changed in this version**  
+> This document replaces the earlier OneLake-first framing with the broader build now requested:  
+> `sub1` = Microsoft Fabric workspace and semantic model plane  
+> `sub2` = Azure SQL Server source system populated with synthetic Enercare data  
+> `sub3` = Microsoft Purview governance plane  
+> The build continues to reuse the notebooks, semantic model, and metadata scaffolding already created, but the target architecture now centers on Azure SQL mirroring and Purview publication.
 
 ---
 
-## Quick Status — All Gaps
+## Executive Direction
+
+The Enercare demo is no longer just a Fabric-native metadata prototype. The target build is now an end-to-end cross-subscription architecture that:
+
+1. Publishes synthetic Enercare source data into **Azure SQL Server in sub2**.
+2. Mirrors that SQL source into **Microsoft Fabric in sub1**.
+3. Applies metadata and governance logic to Fabric assets and the semantic model.
+4. Deploys **Purview in sub3** for scanning, catalog publication, glossary, and lineage.
+5. Uses **Purview as the published metadata system of record** for governed discovery.
+
+### Non-negotiable design decisions
+
+- **Do not assume source extended properties exist.** They do not.
+- **Do not make source SQL extended properties a prerequisite for the build.** Metadata must be derived from the existing notebooks, SQL artifacts, and curated metadata tables.
+- **Keep the current Fabric assets.** The existing notebooks, `lh_metadata` scaffolding, semantic model, and connectivity work remain useful and should be adapted rather than discarded.
+- **Keep semantic model descriptions.** Even if Purview becomes the catalog system of record, Copilot and Fabric Data Agents still need metadata propagated into the semantic model.
+- **Purview becomes the governed catalog endpoint.** `lh_metadata` remains a working/staging store for authoring, curation, and propagation, but not the final catalog authority.
+- **Define semantic write-back as a hybrid pattern, not a single tool choice.** The baseline repo pattern remains Git-backed TMDL and Fabric Items API updates. SemPy Labs is an allowed integration for targeted semantic-model write-backs when XMLA is enabled, but it is not the primary required deployment path.
+
+---
+
+## Current State Summary
+
+### What is already working
+
+- Synthetic Enercare data generation exists in the Fabric notebooks.
+- The `lh_metadata` lakehouse schema and supporting metadata tables are scaffolded.
+- The BrookfieldEnercare semantic model exists and is under Git-backed TMDL control.
+- Fabric outbound private connectivity from the Enercare workspace to `sqlserver-sk2` is implemented through a managed private endpoint.
+- JDBC connectivity from the Fabric notebook to `sqldemo` succeeded.
+- The validation user `seankelley@MngEnvMCAP660444.onmicrosoft.com` was provisioned in `sqldemo` as `EXTERNAL_USER` for the smoke test.
+- Temporary public access used for the admin step was removed; the SQL server is back to private-only access.
+- The `sub3` Purview account is now deployed as `Purview-West3` in `AzureWest3-RG` (`westus3`, subscription `bde41857-48c2-4eb5-9959-208f768deafb`).
+
+### What is not yet built
+
+- The synthetic dataset is not yet established as the authoritative **Azure SQL source** in sub2.
+- Fabric mirroring from the sub2 SQL source is not yet configured as the primary ingestion path.
+- Purview in sub3 is deployed, but scanning of the SQL/Fabric estate is not yet configured.
+- Purview publication, glossary, and lineage registration are not yet implemented.
+- The earlier gap structure does not yet represent the new three-subscription target state.
+
+---
+
+## Quick Status - Revised Build Gaps
 
 | # | Gap | Priority | Status | Owner |
 |---|---|---|---|---|
-| G1 | Canonical metadata store | P1 | 🟡 In Progress | Sean |
-| G2 | Certified KPI definitions | P1 | 🟡 In Progress | Sean |
-| CC | Call center data layer | P1 | 🟢 Done | Sean |
-| G3 | Metadata write-back to semantic model | P1 | 🟡 In Progress | Ajay |
-| G4 | Copilot "prep data for AI" | P2 | 🟡 In Progress | Sean |
-| G5 | Standalone Copilot governance | P2 | ⏸ Blocked | Alison |
-| G6 | Purview integration (descriptions + glossary) | P2 | 🔴 Not Started | Alison |
-| G7 | Lineage registration in Purview | P3 | 🔴 Not Started | Ajay / Alison |
-| G8 | AI gap-fill for sparse metadata | P2 | 🔴 Not Started | Ajay |
-| G9 | Steward approval workflow | P3 | 🔴 Not Started | Alison |
-| G10 | Ontology layer | P3 | 🔴 Not Started | Alison + Christopher |
-| G11 | B2C chatbot (structured + unstructured) | P4 | ⏸ Blocked | Ajay / Sean |
+| G1 | Cross-subscription target architecture and environment alignment | P1 | 🟡 In Progress | Sean |
+| G2 | Azure SQL source system in sub2 | P1 | 🔴 Not Started | Sean |
+| G3 | Synthetic data publication from notebooks into Azure SQL | P1 | 🔴 Not Started | Sean |
+| G4 | Fabric mirroring from sub2 SQL into sub1 | P1 | 🔴 Not Started | Ajay |
+| G5 | Metadata extraction and working metadata store alignment | P1 | 🟡 In Progress | Sean |
+| G6 | Semantic model metadata write-back and Copilot grounding | P1 | 🟡 In Progress | Ajay / Sean |
+| G7 | Purview deployment in sub3 | P1 | 🟡 In Progress | Alison |
+| G8 | Purview scans, catalog publication, and glossary | P1 | 🔴 Not Started | Alison |
+| G9 | Lineage registration from SQL to Fabric to semantic model | P2 | 🔴 Not Started | Ajay / Alison |
+| G10 | Steward workflow and AI-assisted metadata drafting | P3 | 🔴 Not Started | Alison / Sean |
+| G11 | Optional ontology and B2C extensions | P4 | ⏸ Blocked / Deferred | Ajay / Sean |
 
 ---
 
-## Context: Why This Matters
+## Target Architecture - vNext
 
-Enercare has hundreds of purpose-built Power BI models with divergent KPI logic. Metadata is "very, very naive" — sparse, tribal, and unstored. Copilot accuracy depends entirely on the quality of metadata behind the semantic model. The north star: a small set of certified semantic models, enriched with business metadata, surfaced through Copilot and Data Agents, backed by a centralized metadata system (Purview + OneLake), and automated via pipelines.
+### Subscription roles
 
-**This document tracks the work required to get there.**
+| Subscription | Role | Target assets |
+|---|---|---|
+| `sub1` | Fabric build, mirror landing, Lakehouse, semantic model, Copilot, Data Agents | Fabric workspace, lakehouses, notebooks, mirrored DB, semantic model |
+| `sub2` | Authoritative SQL source for the demo | Azure SQL server, `sqldemo`, source views/procs/tables |
+| `sub3` | Governance and catalog plane | Microsoft Purview account, scans, glossary, lineage, classifications |
 
----
+### End-state flow
 
-## Network Design Note — Fabric To Azure SQL
+1. Notebooks 1-2 generate synthetic Enercare data.
+2. That data is loaded into **Azure SQL in sub2** as the demo source system.
+3. **Fabric Mirroring** in sub1 ingests the SQL source into OneLake.
+4. Metadata is authored or staged in working stores (`lh_metadata`, notebook-driven tables, extracted SQL definitions).
+5. Metadata is propagated to the **semantic model** so Copilot and Data Agents can use it.
+6. **Purview in sub3** scans SQL and Fabric assets, receives curated metadata and lineage, and becomes the published catalog system of record.
 
-**Status:** 🟢 Implemented on 2026-05-20
+### Metadata publication model
 
-The final private-access pattern for the Enercare demo uses a **Fabric managed private endpoint** from the `Enercare` workspace to Azure SQL server `sqlserver-sk2` in `SQL-West1-RG`.
+| Layer | Purpose | System-of-record role |
+|---|---|---|
+| Azure SQL source objects | Business source and scan target | Source data authority |
+| `lh_metadata` in Fabric | Working metadata cache/staging/curation | Not final catalog authority |
+| Fabric semantic model | Consumption surface for Copilot and Data Agents | Published consumer surface |
+| Purview | Catalog, glossary, lineage, discoverability | **Published metadata system of record** |
 
-### Final state
+### Semantic model write-back definition
 
-- Workspace: `Enercare` (`795ce5db-7ea0-4a7c-ba64-e27c9fb568f4`)
-- Fabric outbound networking endpoint: `sqlserver-sk2-mpe`
-- Target SQL resource ID: `/subscriptions/c4a3460a-3527-460c-ab59-4a4c7a15646b/resourceGroups/SQL-West1-RG/providers/Microsoft.Sql/servers/sqlserver-sk2`
-- SQL-side private endpoint connection: `Approved`
-- Notebook smoke test: `pbi/nb_05b_test_sql_connectivity.Notebook/`
+| Path | Role | Status in solution |
+|---|---|---|
+| Git-backed TMDL + Fabric Items API | Primary path for model descriptions, AI instructions, verified answers, and repeatable source-controlled updates | **Required baseline** |
+| SemPy / SemPy Labs integration | Optional targeted write-back path for column and measure descriptions where XMLA-enabled model operations are useful | **Included as optional integration, not baseline** |
 
-### Important design decision
-
-- **Do not create a customer-managed VNet in sub1 just to enable Fabric notebook or Spark access to Azure SQL private endpoints.** Fabric Data Engineering workloads use workspace-managed outbound networking and managed private endpoints.
-- The earlier test pattern using a customer VNet, Azure private endpoint, and private DNS zone link in `sub2` was removed after the Fabric-managed path was approved.
-
-### Retired test resources
-
-- Removed private endpoint: `sql-PE1`
-- Removed VNet: `sql-vnet2`
-- Removed private DNS VNet link in `sql-west1-rg` for `privatelink.database.windows.net`
-- Removed dedicated NSG attached to `sql-vnet2`
-
-### When the Bicep file is still useful
-
-- `sql-private-dns-vnet-link.bicep` remains in the repo for **customer-managed VNet** scenarios, such as a VNet data gateway or another Azure client that must resolve Azure SQL private endpoint names through a private DNS zone link.
-- It is **not** the primary solution for Fabric notebook connectivity in this demo.
+This resolves the current repo inconsistency: the solution definition should not say "no SemPy" globally. It should say "no SemPy as the only or primary write-back mechanism." SemPy Labs remains in-scope for focused semantic-model updates.
 
 ---
 
-## G1 — Canonical Metadata Store
+## Gap Details
 
-**Priority:** P1 — everything downstream depends on this  
-**Goal:** Single queryable hub (`lh_metadata` in OneLake) feeding Copilot, Purview, Data Agents, and the semantic model. Metadata is authored once and propagated everywhere.  
-**Status:** 🟡 In Progress — schema extended; G1-6, G1-8, G1-10 remain
+## G1 - Cross-Subscription Target Architecture And Environment Alignment
+
+**Priority:** P1  
+**Goal:** Lock the subscription topology and connection model so the build stops drifting between prototype assumptions and the new production-style design.  
+**Status:** 🟡 In Progress
 
 ### Tasks
 
 | # | Task | Status | Owner | Notes |
 |---|---|---|---|---|
-| G1-1 | `asset_metadata` table — verify schema covers all required fields (owner, steward, domain, sensitivity, IsDraft, DefinitionHash) | 🟢 Done | Sean | Exists in current build |
-| G1-2 | `column_metadata` table — verify schema | 🟢 Done | Sean | Exists in current build |
-| G1-3 | `kpi_metadata` table — add `IsCertified`, `Version`, `PreviousFormula`, `CertifiedBy`, `CertifiedDate` columns | 🟢 Done | Sean | nb_04a Cell 2 — ALTER TABLE adds 10 columns |
-| G1-4 | `ai_metadata` table — new; stores verified answers, AI instructions, term mappings per model | 🟢 Done | Sean | nb_04a Cell 3 — CREATE TABLE + seeded 13 verified answers + 3 AI instructions |
-| G1-5 | `data_owners` table — owner + steward registry per domain | 🟢 Done | Sean | nb_04a Cell 4 — CREATE TABLE |
-| G1-6 | `sensitivity_classification` table — sensitivity label mappings | 🔴 Not Started | Sean | |
-| G1-7 | `lineage_edges` table — source → target transformation graph | 🟢 Done | Sean | nb_04a Cell 5 — CREATE TABLE; populate via G7 |
-| G1-8 | `ontology_classes` + `ontology_relationships` tables | 🔴 Not Started | Sean + Christopher | Prerequisite for G10 |
-| G1-9 | Extend `vw_business_metadata_current` to include new tables | 🟢 Done | Sean | nb_04a Cell 10 — UNION ALL with ai_metadata + SourceTable discriminator |
-| G1-10 | Update nb_02 extractor to populate new table columns | 🔴 Not Started | Sean | After schema changes done |
+| G1-1 | Confirm sub1/sub2/sub3 roles and named resources | 🟡 In Progress | Sean | Fabric = sub1, SQL = sub2, Purview = sub3; Purview account = `Purview-West3` |
+| G1-2 | Record target resource names, regions, RGs, and identities in this document | 🟡 In Progress | Sean | Captured workspace, SQL server, and Purview account; scan identity still pending |
+| G1-3 | Keep Fabric managed private endpoint pattern for sub1 -> sub2 SQL access | 🟢 Done | Sean | `sqlserver-sk2-mpe` validated |
+| G1-4 | Confirm Entra app / MI ownership model for Purview and scanning | 🔴 Not Started | Alison | Needed before G7/G8 |
+| G1-5 | Update all build docs to reflect Purview-as-catalog and SQL-mirroring-first architecture | 🔴 Not Started | Sean | This file is the first step |
 
 ---
 
-## G2 — Certified KPI Definitions
+## G2 - Azure SQL Source System In sub2
 
-**Priority:** P1 — primary business driver stated in meeting  
-**Goal:** Business stakeholders own and certify KPI definitions. Logic is version-controlled. Changes require approval before propagating to the semantic model or Purview.  
-**Status:** 🟡 In Progress — schema extended; `IsCertified = 1` propagation gate (G2-4) is partially implemented in `nb_04_generate_tmdl.py`; version control logic (G2-5) remains
+**Priority:** P1  
+**Goal:** Establish the Azure SQL database in sub2 as the authoritative source for the mirrored demo.  
+**Status:** 🟡 In Progress
 
 ### Tasks
 
 | # | Task | Status | Owner | Notes |
 |---|---|---|---|---|
-| G2-1 | Add `IsCertified`, `Version`, `PreviousFormula`, `CertifiedBy`, `CertifiedDate` to `kpi_metadata` (see G1-3) | 🟢 Done | Sean | nb_04a Cell 2 — 10 columns added via ALTER TABLE |
-| G2-2 | Seed `kpi_metadata` with existing 12 DAX measures from BrookfieldEnercare semantic model | 🟢 Done | Sean | nb_04a Cells 6–7 — 12 existing measures (IsCertified=0) + 5 CC KPIs (IsCertified=1) |
-| G2-3 | Define KPI ownership — agree with Christopher/Ranbir on which business owner certifies each domain's KPIs | 🔴 Not Started | Christopher / Ranbir | Business decision |
-| G2-4 | Propagation rule: only `IsCertified = 1` KPIs promoted to semantic model and Purview glossary | 🟡 In Progress | Sean | Partially implemented in `nb_04_generate_tmdl.py` with IsCertified filter |
-| G2-5 | Version increment logic: when KPI formula changes, capture old formula in `PreviousFormula`, bump `Version`, reset `IsCertified = 0` | 🔴 Not Started | Sean | Triggers re-certification |
+| G2-1 | Finalize target SQL server and database in sub2 | 🟡 In Progress | Sean | Currently testing against `sqlserver-sk2` / `sqldemo` |
+| G2-2 | Create or confirm source schema for synthetic Enercare tables in Azure SQL | 🟡 In Progress | Sean | Initial DDL captured in `sql/02_sub2_sql_source_schema.sql` for the seven source tables consumed by the current star schema |
+| G2-3 | Define which views/procs will carry business semantics for metadata extraction | 🔴 Not Started | Sean + Christopher | Needed for metadata path |
+| G2-4 | Decide whether metadata helper tables also live in SQL or remain Fabric-side only | 🔴 Not Started | Sean | Keep simple unless Purview scan benefits from SQL-side metadata objects |
+| G2-5 | Validate SQL source shape is stable enough to be mirrored | 🔴 Not Started | Sean | Before G4 |
 
 ---
 
-## G3 — Metadata Write-Back to Semantic Model
+## G3 - Synthetic Data Publication From Notebooks Into Azure SQL
 
-**Priority:** P1 — unblocks Copilot configuration and Purview descriptions  
-**Goal:** Descriptions, AI instructions, and verified answers from `lh_metadata` are automatically applied to the BrookfieldEnercare semantic model — without TOM, XMLA, or a Windows VM.  
-**Status:** � In Progress  
-**Approach:** Git-based TMDL pipeline. The semantic model is maintained as TMDL files in git. A Fabric notebook renders updated TMDL from `lh_metadata`, commits to the `enercare` branch, and Fabric Source Control sync applies the changes.
+**Priority:** P1  
+**Goal:** Reuse the current synthetic-data notebooks, but publish their output into Azure SQL in sub2 instead of treating Fabric-only tables as the long-term source.  
+**Status:** 🟡 In Progress
 
 ### Tasks
 
 | # | Task | Status | Owner | Notes |
 |---|---|---|---|---|
-| G3-1 | Design TMDL template for table/column description injection | 🟡 In Progress | Ajay | Template logic exists in `pbi/nb_04_generate_tmdl.Notebook` |
-| G3-2 | Build `nb_04_generate_tmdl.py` — reads `vw_business_metadata_current`, renders TMDL files | 🟡 In Progress | Ajay | Core pipeline notebook exists; validation pending |
-| G3-3 | Add AI instructions injection from `ai_metadata` into TMDL model-level block | 🟡 In Progress | Ajay | `nb_04_generate_tmdl.py` reads ai_metadata; injection path exists |
-| G3-4 | Add verified answers injection from `ai_metadata` into TMDL | 🟡 In Progress | Ajay | `nb_04_generate_tmdl.py` has verified-answer read logic; full push check pending |
-| G3-5 | Git commit + push step in nb_04 (via Fabric Files API or OneLake DFS write + manual sync) | 🟡 In Progress | Ajay | `nb_04_generate_tmdl.py` includes Fabric REST updateDefinition logic |
-| G3-6 | Test: run nb_04, verify TMDL diffs are correct, sync to Fabric, confirm descriptions appear in semantic model | 🔴 Not Started | Ajay | |
-| G3-7 | Document the approach for Christopher as the answer to the TOM/Windows VM question | 🟢 Done | Sean | Captured in meeting action items section of this doc |
+| G3-1 | Map notebook-generated entities to Azure SQL target tables | 🟡 In Progress | Sean | Mapping note added in `docs/sub2-sql-source-mapping.md`; first cut is the seven source tables read by `nb_02_pbi_star_schema.py` |
+| G3-2 | Build load/export notebook or script from Fabric outputs to Azure SQL | 🟡 In Progress | Sean | Initial publish workflow added as source mirror in `demo/fabric/nb_05a_publish_synthetic_data_to_sql.py` and Git sync notebook in `pbi/nb_05a_publish_synthetic_data_to_sql.Notebook/` |
+| G3-3 | Seed sub2 SQL with current synthetic dataset | 🔴 Not Started | Sean | Core new requirement |
+| G3-4 | Reconcile row counts and keys between notebook outputs and SQL source | 🔴 Not Started | Sean | Validation gate |
+| G3-5 | Document rerun behavior for regenerating and republishing synthetic data | 🔴 Not Started | Sean | Needed for demo repeatability |
 
 ---
 
-## G4 — Copilot "Prep Data for AI"
+## G4 - Fabric Mirroring From sub2 SQL Into sub1
 
-**Priority:** P2 — direct path to Copilot accuracy and business adoption  
-**Goal:** BrookfieldEnercare semantic model is fully configured for Copilot: large model storage, simplified schema, verified answers, AI instructions. Business users get trusted answers.  
-**Status:** 🟡 In Progress — semantic model exists and Data Agent stage_config AI instructions are present; model annotation delivery remains pending
-**Dependency:** G3 (write-back pipeline) for automated delivery; G1-4 (`ai_metadata`) for content
+**Priority:** P1  
+**Goal:** Mirror the SQL source into Fabric so the solution demonstrates the intended SQL mirroring architecture instead of a Fabric-only seeded path.  
+**Status:** 🔴 Not Started
 
 ### Tasks
 
 | # | Task | Status | Owner | Notes |
 |---|---|---|---|---|
-| G4-1 | Enable large model storage on BrookfieldEnercare semantic model in Fabric settings | 🔴 Not Started | Sean | Fabric portal — Settings → Q&A |
-| G4-2 | Review and simplify schema for Copilot: hide technical columns, set user-facing display names | 🔴 Not Started | Sean | |
-| G4-3 | Draft initial AI instructions block for the semantic model (domain terminology, KPI mappings) | 🟡 In Progress | Sean + Christopher | `pbi/Enercare Data Agent.DataAgent/Files/Config/draft/stage_config.json` already contains grounding instructions |
-| G4-4 | Populate `ai_metadata` with verified Q&A pairs for top 10 high-frequency business questions | 🟡 In Progress | Sean + Ranbir | Verified answer seed content exists in `ai_metadata` scaffold |
-| G4-5 | Deliver via G3 pipeline: AI instructions + verified answers → TMDL → Fabric sync | 🔴 Not Started | Sean | Depends on G3 complete |
-| G4-6 | Test: ask Copilot the 10 verified questions; confirm answers match expected output | 🔴 Not Started | Sean + Christopher | Acceptance test |
+| G4-1 | Create mirrored Azure SQL Database item in Fabric for the sub2 source | 🔴 Not Started | Ajay | Primary architecture objective |
+| G4-2 | Validate mirrored tables land in OneLake with expected names and types | 🔴 Not Started | Ajay | |
+| G4-3 | Decide how mirrored tables coexist with current demo lakehouse tables | 🔴 Not Started | Sean + Ajay | Avoid destroying current model |
+| G4-4 | Update star schema / downstream notebooks to read mirrored source where appropriate | 🔴 Not Started | Ajay | Incremental migration |
+| G4-5 | Validate end-to-end refresh and freshness behavior | 🔴 Not Started | Ajay | Required for demo narrative |
 
 ---
 
-## G5 — Standalone Copilot Governance
+## G5 - Metadata Extraction And Working Metadata Store Alignment
 
-**Priority:** P2 — unblocks self-service at scale  
-**Goal:** Standalone Copilot enabled in tenant, restricted to certified semantic models only. Business users can query across certified models without exposing all 300+ models.  
-**Status:** ⏸ Blocked — pending Alison sharing tenant settings documentation with Christopher's team  
-**Dependency:** IT admin access; Alison's follow-up from meeting
+**Priority:** P1  
+**Goal:** Preserve the metadata work already done, but realign it so metadata can be derived from SQL artifacts and then staged for downstream propagation.  
+**Status:** 🟡 In Progress
 
 ### Tasks
 
 | # | Task | Status | Owner | Notes |
 |---|---|---|---|---|
-| G5-1 | Share Standalone Copilot tenant settings + enablement steps with Christopher's team | 🔴 Not Started | Alison | Meeting action item |
-| G5-2 | Create "Certified Models" security group in Entra ID | 🔴 Not Started | Christopher / IT | |
-| G5-3 | Add BrookfieldEnercare semantic model to approved list in tenant settings | 🔴 Not Started | Fabric admin | |
-| G5-4 | Test: confirm Standalone Copilot surfaces only certified models for test users | 🔴 Not Started | Sean + Alison | |
+| G5-1 | Keep `lh_metadata` as the working metadata cache/staging store | 🟡 In Progress | Sean | No longer the final catalog authority |
+| G5-2 | Reconcile current metadata schema against the README build recommendations | 🔴 Not Started | Sean | Align table purposes and names |
+| G5-3 | Define metadata extraction approach from SQL views/procs or sidecar conventions | 🔴 Not Started | Sean | No dependency on source extended properties |
+| G5-4 | Update notebook extractor logic to support SQL-source-first metadata | 🔴 Not Started | Sean | Extend current notebook path |
+| G5-5 | Distinguish curated metadata rows from AI draft rows and scan-derived rows | 🔴 Not Started | Sean | Needed before Purview publication |
 
 ---
 
-## G6 — Purview Integration (Descriptions + Glossary + Sensitivity)
+## G6 - Semantic Model Metadata Write-Back And Copilot Grounding
 
-**Priority:** P2 — delivers discoverability; answer to "centralize metadata in OneLake catalog"  
-**Goal:** Purview Unified Catalog populated with asset descriptions, column definitions, certified KPI glossary terms, and sensitivity labels — sourced automatically from `lh_metadata`.  
-**Status:** 🔴 Not Started  
-**Dependency:** G1 (metadata store complete), G2 (KPIs certified), Purview service principal
+**Priority:** P1  
+**Goal:** Continue using semantic model descriptions, AI instructions, and verified answers so Fabric Copilot and Data Agents have a trustworthy consumption surface even when Purview becomes the catalog authority.  
+**Status:** 🟡 In Progress
 
 ### Tasks
 
 | # | Task | Status | Owner | Notes |
 |---|---|---|---|---|
-| G6-1 | Register Entra ID app registration for Purview API access; grant `Data Curator` role | 🔴 Not Started | Alison | |
-| G6-2 | Store client ID + secret in Fabric notebook environment variables or Key Vault | 🔴 Not Started | Alison | |
-| G6-3 | Build `nb_05_purview_push.py` — reads `vw_business_metadata_current`, pushes to Atlas API | 🔴 Not Started | Alison | Adapt `06_purview_push_descriptions.py` from archive |
-| G6-4 | Push asset and column descriptions to `mssql_column` qualified names (source assets) | 🔴 Not Started | Alison | |
-| G6-5 | Push asset and column descriptions to `fabric_lakehouse_table_column` qualified names (OneLake) | 🔴 Not Started | Alison | New vs. original design |
-| G6-6 | Push certified KPIs as Purview business glossary terms with owner assignment | 🔴 Not Started | Alison | Only `IsCertified = 1` rows |
-| G6-7 | Push sensitivity labels from `sensitivity_classification` as MIP label mappings | 🔴 Not Started | Alison | |
-| G6-8 | Test: verify assets appear in Purview with correct descriptions and glossary term assignments | 🔴 Not Started | Alison + Christopher | |
+| G6-1 | Preserve current Git-backed TMDL and Fabric Items API write-back approach as the baseline path | 🟡 In Progress | Ajay | Do not regress existing progress |
+| G6-2 | Update `nb_04_generate_tmdl.py` for mirrored-source naming where needed | 🔴 Not Started | Ajay | Align to new architecture |
+| G6-3 | Keep AI instructions and verified Q&A delivery into the semantic model | 🟡 In Progress | Sean | Existing scaffolding already present; stays on Items API/TMDL path |
+| G6-4 | Add SemPy Labs integration point for targeted column/measure description write-backs where XMLA-enabled operations are beneficial | 🔴 Not Started | Ajay / Sean | Optional integration, not the required baseline |
+| G6-5 | Validate that TMDL/Items API and SemPy write-backs do not conflict and remain consistent with Purview publication | 🔴 Not Started | Sean + Alison | No drift between model and catalog |
+| G6-6 | Confirm XMLA/capacity prerequisites if SemPy Labs will be used in this environment | 🔴 Not Started | Sean | Required only for SemPy path |
+| G6-7 | Maintain `nb_05b_test_sql_connectivity` as a smoke test for private SQL access | 🟢 Done | Sean | End-to-end JDBC test succeeded |
 
 ---
 
-## G7 — Lineage Registration in Purview
+## G7 - Purview Deployment In sub3
 
-**Priority:** P3 — impact analysis; depends on G6  
-**Goal:** Three-hop column-level lineage in Purview: SQL view/source → OneLake Delta table → semantic model column → Power BI report visual. Impact analysis becomes possible when KPI logic changes.  
-**Status:** 🔴 Not Started  
-**Dependency:** G6 (Purview integration active), G1-7 (`lineage_edges` table)
+**Priority:** P1  
+**Goal:** Stand up the dedicated Purview plane in sub3 and prepare it to scan both the SQL source and the Fabric estate.  
+**Status:** 🟡 In Progress
+
+### Working design decision for G7
+
+For the current Enercare architecture, the Purview networking model should use **private scanning paths first**, not a broad "all networks" posture.
+
+- Use Purview managed virtual network and private ingestion connectivity for scanning private Azure sources where possible.
+- Do **not** treat the Purview account private endpoint as a required day-one step for this build.
+- Add Purview account and portal private endpoints only if and when we decide to set Purview public network access to `Deny` for admin/API access.
+- Keep the design focused on privately reaching the Azure SQL source in `sub2`; do not create extra private endpoints just because the Purview account wizard offers them.
 
 ### Tasks
 
 | # | Task | Status | Owner | Notes |
 |---|---|---|---|---|
-| G7-1 | Populate `lineage_edges` table for all known transformation steps | 🔴 Not Started | Alison | Source → lh_enercare_demo → star schema → semantic model |
-| G7-2 | Build `nb_06_purview_lineage.py` — registers Atlas Process entities per lineage edge | 🔴 Not Started | Ajay | Adapt `07_purview_register_lineage.py` from archive |
-| G7-3 | Register: SQL view → source table edge (view/proc as upstream node) | 🔴 Not Started | Ajay | |
-| G7-4 | Register: nb_03 notebook → star schema tables edge | 🔴 Not Started | Ajay | |
-| G7-5 | Register: star schema table → semantic model column edge (Direct Lake) | 🔴 Not Started | Ajay | |
-| G7-6 | Test: confirm lineage graph in Purview shows three hops for a sample column | 🔴 Not Started | Alison + Christopher | |
+| G7-1 | Deploy Purview account in sub3 | 🟢 Done | Alison | Deployed as `Purview-West3` in `AzureWest3-RG` (`westus3`), subscription `bde41857-48c2-4eb5-9959-208f768deafb` |
+| G7-2 | Configure networking and trusted access for SQL and Fabric scanning | 🟡 In Progress | Alison | Preferred pattern: Purview managed VNet/private ingestion for private SQL scanning; defer Purview account/portal private endpoints unless public access will be denied |
+| G7-3 | Register scan identities / service principals and required roles | 🟡 In Progress | Alison | Define the scan identity model for Azure SQL in sub2: prefer managed identity where supported; otherwise use a dedicated Entra app/service principal and provision least-privilege SQL read metadata access |
+| G7-4 | Confirm Fabric tenant integration with Purview | 🔴 Not Started | Alison | |
+| G7-5 | Capture Purview account details, regions, and scan boundaries in this doc | 🟡 In Progress | Alison | Account details captured; initial scan boundary is private Azure SQL in sub2 and later mirrored Fabric assets in sub1 |
 
 ---
 
-## G8 — AI Gap-Fill for Sparse Metadata
+## G8 - Purview Scans, Catalog Publication, And Glossary
 
-**Priority:** P2 — required to bootstrap; metadata sparsity directly degrades Copilot accuracy  
-**Goal:** Undocumented assets and columns receive AI-drafted descriptions using Fabric-native AI functions. Drafts flagged `IsDraft = 1` for steward review before propagating.  
-**Status:** 🔴 Not Started  
-**Approach:** `ai_generate_text()` in Fabric Spark SQL — no external Azure OpenAI credentials needed
+**Priority:** P1  
+**Goal:** Make Purview the published metadata system of record by scanning SQL and Fabric assets, then enriching catalog entries with the curated metadata prepared by the solution.  
+**Status:** 🔴 Not Started
 
 ### Tasks
 
 | # | Task | Status | Owner | Notes |
 |---|---|---|---|---|
-| G8-1 | Build `nb_07_ai_gap_fill.py` — queries `lh_metadata` for rows where `Description IS NULL`, calls `ai_generate_text()` | 🔴 Not Started | Ajay | Fabric-native replacement for `ai_gap_fill.py` in archive |
-| G8-2 | Write drafts with `IsDraft = 1` — do not propagate until approved | 🔴 Not Started | Ajay | |
-| G8-3 | Run against current `asset_metadata` and `column_metadata` — generate drafts for all demo assets | 🔴 Not Started | Ajay | Validates approach before production |
-| G8-4 | Review AI draft quality with Christopher/Ranbir — adjust prompt if needed | 🔴 Not Started | Sean + Christopher | |
+| G8-1 | Scan Azure SQL source objects in sub2 | 🔴 Not Started | Alison | Tables, views, procedures where supported |
+| G8-2 | Scan Fabric mirrored assets, lakehouses, and semantic model surfaces | 🔴 Not Started | Alison | |
+| G8-3 | Build Purview push notebook/script to enrich scanned assets with curated descriptions | 🔴 Not Started | Alison | Adapt archive scripts as needed |
+| G8-4 | Publish certified KPI terms into Purview glossary | 🔴 Not Started | Alison | |
+| G8-5 | Define conflict rule when Purview scan metadata and curated metadata disagree | 🔴 Not Started | Sean + Alison | Purview remains published authority |
+| G8-6 | Validate that Purview becomes the discoverability endpoint for business users | 🔴 Not Started | Alison + Christopher | Acceptance test |
 
 ---
 
-## G9 — Steward Approval Workflow
+## G9 - Lineage Registration From SQL To Fabric To Semantic Model
 
-**Priority:** P3 — required before metadata propagates to production Purview / semantic model  
-**Goal:** Business owners can review and certify KPI definitions and AI-drafted descriptions. Only approved (`IsDraft = 0`, `IsCertified = 1`) rows propagate downstream.  
-**Status:** 🔴 Not Started  
-**Dependency:** G1 (metadata store), G2 (KPI certification fields), G8 (AI drafts to review)
+**Priority:** P2  
+**Goal:** Register lineage that starts at the SQL source in sub2 and flows through mirrored Fabric assets into the semantic model and report layer.  
+**Status:** 🔴 Not Started
 
 ### Tasks
 
 | # | Task | Status | Owner | Notes |
 |---|---|---|---|---|
-| G9-1 | Build steward review notebook — shows `IsDraft = 1` rows filtered by domain owner | 🔴 Not Started | Alison | Phase 1: notebook-based; Phase 2: Power App |
-| G9-2 | Add approval action: steward sets `IsDraft = 0` for approved rows | 🔴 Not Started | Alison | |
-| G9-3 | Add KPI certification action: business owner sets `IsCertified = 1` with `CertifiedBy` | 🔴 Not Started | Alison | |
-| G9-4 | Add drift alert: if `DefinitionHash` changes on an approved asset, reset `IsDraft = 1` and notify owner | 🔴 Not Started | Alison | |
-| G9-5 | Agree on domain ownership matrix with Christopher/Ranbir — who approves what | 🔴 Not Started | Christopher / Ranbir | Business decision |
+| G9-1 | Update `lineage_edges` modeling for SQL source -> mirrored table -> semantic model path | 🔴 Not Started | Ajay | Existing table can be reused |
+| G9-2 | Build Purview lineage registration notebook/script | 🔴 Not Started | Ajay | Adapt archive lineage script |
+| G9-3 | Register at least one complete sample lineage chain for demo | 🔴 Not Started | Ajay | Minimum viable scenario |
+| G9-4 | Validate lineage graph in Purview for a representative KPI/column | 🔴 Not Started | Alison + Christopher | Acceptance test |
 
 ---
 
-## G10 — Ontology Layer
+## G10 - Steward Workflow And AI-Assisted Metadata Drafting
 
-**Priority:** P3 — longer-term; domain model requires business input  
-**Goal:** Enercare-specific entity classes (Customer, ServiceAccount, Equipment, Contract, ServiceEvent, BillingEvent) registered as custom Purview types. Assets discoverable by domain, not just schema.  
-**Status:** 🔴 Not Started  
-**Dependency:** G6 (Purview integration), G1-8 (ontology tables in `lh_metadata`)
+**Priority:** P3  
+**Goal:** Add the operational layer so humans can approve metadata drafts and certified definitions before they are published to Purview and the semantic model.  
+**Status:** 🔴 Not Started
 
 ### Tasks
 
 | # | Task | Status | Owner | Notes |
 |---|---|---|---|---|
-| G10-1 | Workshop with Christopher/Ranbir: define entity classes and relationships for Enercare domain | 🔴 Not Started | Alison + Christopher | Business input required |
-| G10-2 | Populate `ontology_classes` and `ontology_relationships` tables from workshop output | 🔴 Not Started | Alison | |
-| G10-3 | Register custom Atlas `EntityDef` types via Purview REST API | 🔴 Not Started | Alison | |
-| G10-4 | Map existing `asset_metadata` rows to ontology classes (`OntologyClass` column) | 🔴 Not Started | Alison | |
-| G10-5 | Update Purview push (G6) to use ontology `typeName` instead of generic `DataSet` | 🔴 Not Started | Alison | |
+| G10-1 | Keep `IsDraft` / `IsCertified` workflow semantics in the working metadata store | 🟡 In Progress | Sean | Existing schema already points this way |
+| G10-2 | Build steward review workflow for drafted descriptions and KPI certifications | 🔴 Not Started | Alison | Notebook first, app later |
+| G10-3 | Reintroduce AI gap-fill only after SQL-source-first metadata path is stable | 🔴 Not Started | Sean + Ajay | Lower priority than topology shift |
+| G10-4 | Define publication rules from approved metadata into Purview and semantic model | 🔴 Not Started | Sean + Alison | |
 
 ---
 
-## G11 — B2C Customer Support Chatbot
+## G11 - Optional Ontology And B2C Extensions
 
-**Priority:** P4 — blocked on IT/legal approval  
-**Goal:** A chatbot combining structured data (Fabric / Power BI) with unstructured data (call transcripts) to answer customer support queries. Fabric Data Agent + AI Search + Copilot Studio.  
-**Status:** ⏸ Blocked — IT/legal approval required for cross-region Fabric Data Agent data processing (Canada)  
-**Dependency:** IT architecture review board approval
+**Priority:** P4  
+**Goal:** Defer non-core items until the mirrored SQL + Purview governance path is working end-to-end.  
+**Status:** ⏸ Blocked / Deferred
 
 ### Tasks
 
 | # | Task | Status | Owner | Notes |
 |---|---|---|---|---|
-| G11-1 | Add Microsoft material to IT architecture review deck to support approval | 🔴 Not Started | Ajay | Meeting action item |
-| G11-2 | Submit IT architecture review board request | 🔴 Not Started | Christopher / IT | |
-| G11-3 | Design chatbot architecture: Data Agent + AI Search vector DB + Copilot Studio | 🔴 Not Started | Ajay | Can proceed in parallel with G11-1/2 |
-| G11-4 | Investigate Azure AI Search vector DB integration with Standalone Copilot / Data Agent | 🔴 Not Started | Ajay | Meeting action item |
-| G11-5 | Schedule follow-up session focused on B2C/customer support use case | 🔴 Not Started | Sean | Meeting action item |
+| G11-1 | Ontology layer for Enercare domain classes | 🔴 Not Started | Alison + Christopher | Only after Purview base path works |
+| G11-2 | AI gap-fill at scale across sparse metadata | 🔴 Not Started | Ajay | Depends on G10 |
+| G11-3 | B2C/customer support chatbot architecture | ⏸ Blocked | Ajay / Sean | Not part of the immediate build pivot |
 
 ---
 
-## Meeting Action Items Tracker
+## What Stays From The Current Build
 
-| Action | Owner | Due | Status |
-|---|---|---|---|
-| Share Standalone Copilot tenant settings + enablement steps | Alison | ASAP | 🔴 Not Started |
-| Add material to IT architecture review deck for Fabric Data Agent approval | Ajay | ASAP | 🔴 Not Started |
-| Provide update on metadata storage alternatives + Purview lineage options | Brian / Sean | End of week (2026-05-08) | 🟡 In Progress — this document |
-| Investigate Azure AI Search vector DB integration guidance | Ajay | TBD | 🔴 Not Started |
-| Schedule B2C chatbot follow-up session | Sean | TBD | 🔴 Not Started |
+The following assets remain valid and should be adapted, not removed:
+
+- `demo/fabric/nb_01_setup_demo_environment.py`
+- `demo/fabric/nb_03_metadata_pipeline_demo.py`
+- `demo/fabric/nb_04a_extend_metadata_schema.py`
+- `demo/fabric/nb_04_generate_tmdl.py`
+- `pbi/BrookfieldEnercare.SemanticModel/definition/`
+- `pbi/nb_05b_test_sql_connectivity.Notebook/`
+- The `lh_metadata` lakehouse and its working metadata tables
+- The Fabric managed private endpoint from the Enercare workspace to `sqlserver-sk2`
+
+### Additional retained requirement
+
+- SemPy Labs integration remains in-scope as a targeted semantic-model write-back option for column and measure descriptions. It should be defined as complementary to the TMDL/Items API baseline, not as a replacement for it.
+
+### Explicitly retired assumptions
+
+- OneLake is **not** the final metadata system of record for this build.
+- Source SQL extended properties are **not** assumed to exist.
+- The build should not depend on writing source SQL extended properties just to make the architecture work.
 
 ---
 
-## Technical Reference
+## Immediate Next Build Steps
 
-### Metadata Store: `lh_metadata` (OneLake)
-All consumers read from `vw_business_metadata_current`. Propagation targets:
-- **Copilot / Data Agents** — grounded directly on `lh_metadata` tables
-- **Semantic model** — via TMDL git pipeline (nb_04) — no TOM required
-- **Purview** — via Atlas REST push (nb_05, nb_06)
-- **Delta column comments** — via Spark SQL `ALTER TABLE ... COMMENT` (nb_02, already coded)
+1. Finalize the sub2 SQL source schema and publish the synthetic dataset into it.
+2. Stand up Fabric mirroring from sub2 SQL into sub1.
+3. Deploy Purview in sub3.
+4. Repoint metadata tasks so Purview becomes the published catalog authority while semantic model write-back remains active for Copilot.
+5. Rework demo sequencing so the narrative is: SQL source -> Mirroring -> Fabric model -> Purview governance.
 
-### Semantic Model Write-Back: Git TMDL Pipeline (Answer to TOM Question)
-TMDL files in `/pbi/BrookfieldEnercare.SemanticModel/definition/tables/` are the live source of truth for the semantic model. `nb_04_generate_tmdl.py` renders updated TMDL from `lh_metadata`, commits to `enercare` branch, Fabric Source Control sync applies changes. No TOM, no Windows VM.
+---
 
-### Purview Qualified Name Patterns
-| Asset Type | Pattern |
-|---|---|
-| Source SQL view | `mssql://<server>/<database>/<schema>/<object>` |
-| OneLake Delta table | `fabric://<workspace-id>/<lakehouse>/<table>` |
-| Semantic model column | `powerbi://api.powerbi.com/v1.0/myorg/<workspace>/<model>/<table>/<column>` |
-| Power BI report visual | `powerbi://api.powerbi.com/v1.0/myorg/<workspace>/<report>/<page>/<visual>` |
+## Acceptance Criteria For The Revised Build
 
-### Key File Locations
-| File | Purpose |
-|---|---|
-| `pbi/nb_02_metadata_pipeline_demo.Notebook/` | Metadata extractor + Purview dry-run (activate by setting `DEMO_MODE = False`) |
-| `pbi/nb_03_pbi_star_schema.Notebook/` | Star schema builder |
-| `pbi/BrookfieldEnercare.SemanticModel/definition/` | TMDL source files — target for nb_04 output |
-| `pbi/Enercare Data Agent.DataAgent/` | Data Agent config — AI instructions in `stage_config.json` (semantic model datasource) |
-| `archive/original/purview/` | Reference scripts: `06_purview_push_descriptions.py`, `07_purview_register_lineage.py`, `ai_gap_fill.py` |
+- Synthetic Enercare source data exists in Azure SQL in sub2.
+- Fabric mirrors that SQL source into sub1.
+- The semantic model in Fabric contains curated descriptions and AI grounding content.
+- Purview in sub3 scans both SQL and Fabric assets.
+- Purview displays curated descriptions, glossary terms, and at least one validated lineage chain.
+- The Fabric JDBC smoke-test notebook continues to validate private connectivity from the workspace to the sub2 SQL source.
